@@ -23,7 +23,7 @@ int printImageVal(const char* fileName, const unsigned char* p_img, unsigned sho
 cv::Size getMergeSize(const cv::Mat* p_matArray, unsigned short matNum, Orientation orient);
 
 // combine the images into one single image
-cv::Mat mergeImgs(const cv::Mat* p_matArr, unsigned short matNum, Orientation orient);
+cv::Mat mergeMats(const cv::Mat* p_matArr, unsigned short matNum, Orientation orient);
 
 // create integral image of one image
 unsigned int* createIntegImg(const unsigned char* p_img, unsigned short w, unsigned short h);

@@ -2,6 +2,7 @@
 #define INTERESTPOINTLOCATE_H
 
 #include "imgMath.h"
+#include "opencv2/core/core.hpp"
 
 // specific parameter data of the det(Hessin) pyramid construction ========================
 // number of octaves
@@ -49,10 +50,17 @@ typedef struct FILTER_CORNER_PTRS
     unsigned int* p_boxBRCorn[MAX_BOX_NUM];
 } FiltCornPtrs;
 
+typedef double featElemType;
+#define FEAT_NUM 3
+#define FEAT_MAX 1E20
+#define FEAT_MIN -1E20
+
 typedef struct HU_MATRIX
 {
-    double m0;
-    double m1;
+    // feat[0]: log(n20)
+    // feat[1]: log(n02)
+    // feat[2]: log(abs(n11
+    featElemType feat[FEAT_NUM];
 }huMat;
 
 typedef struct INTEREST_POINT
@@ -63,9 +71,24 @@ typedef struct INTEREST_POINT
 
 typedef struct POINT_PAIR
 {
-    coord p1;
-    coord p2;
+    coord pL;
+    coord pR;
 }pointPair;
+
+/*The 6 unknown coefficients for projection matrix*/
+/*
+    |	m1	m2	m3	|		|	x	|		|	x^	|
+    |				|		|		|		|		|
+    |	m4	m5	m6	|	*	| 	y	|	= 	|	y^	|
+    |				|		|		|		|		|
+    |	0	0	1	|		|	1	|		|	1	|
+*/
+typedef struct PROJECT_MATRIX
+{
+    double m1    ; double m2    ; double m3    ;
+    double m4    ; double m5    ; double m6    ;
+    double m7 = 0; double m8 = 0; double m9 = 1;
+}projectMat;
 
 // draw the rectangle around the interest point
 void drawRect(unsigned char *p_img, const interestPoint *p_points, unsigned short pointNum, unsigned short r, unsigned short w);
@@ -96,10 +119,10 @@ int isRegionMaximum(const double* p_in, unsigned short w, unsigned short h);
 int getPointsLocations(interestPoint *p_points, const double *p_detHesImgPyr, unsigned short octNum, unsigned short layNum, unsigned short w, unsigned short h);
 
 // calculate the feature of one interest point
-void calcFeat(interestPoint* p_point, const unsigned char* p_img, const coord* p_coord, int neighPointNum, unsigned short w, unsigned short h);
+void calcFeat(cv::Mat& mat, interestPoint* p_point, const unsigned char* p_img, const coord* p_coord, int neighPointNum, unsigned short w);
 
 // calculate the features of all the located interest points
-void getPointsFeats(interestPoint* p_points, unsigned int pointNum, const unsigned char* p_img, unsigned short w, unsigned short h, unsigned short r);
+void getPointsFeats(interestPoint* p_points, unsigned int pointNum, const unsigned char* p_img, unsigned short w, unsigned short r);
 
 // locate the interest points through the det(Hessin) image pyramid
 // returns the pointer to the head of the array of interest points
@@ -107,9 +130,22 @@ interestPoint* getInterestPoints(unsigned int* p_pointNum, const unsigned char* 
 
 // calculate the mahala distance of two feature
 // returns the feature distance
-double calcFeatDistance(interestPoint* p_pointL, interestPoint* p_pointR);
+double calcFeatDistance(const interestPoint* p_pointL, const interestPoint* p_pointR);
+
+// get the most similar(nearest) point of current point
+const interestPoint* getNearestPoint(const interestPoint* p_pointCur, const interestPoint* p_pointsRef, unsigned int pointNumRef);
+
+// rough match based on mutual-minimum-distance
+// returns the matched pair number
+int roughMatch(const interestPoint* p_pointsL, int pointNumL, const interestPoint* p_pointsR, int pointNumR, pointPair* p_pairs);
 
 // match the interest points of two images
-pointPair* matchPointsFeats(interestPoint* p_pointsL, int pointNumL, interestPoint* p_pointsR, int pointNumR, unsigned int* p_matchNum);
+pointPair* matchInterestPoints(const interestPoint* p_pointsL, int pointNumL, const interestPoint* p_pointsR, int pointNumR, unsigned int* p_pairNum);
+
+// using ransac to get the best projection matrix based on the coarse matching pairs
+projectMat getProjMatByRansac(const pointPair* p_pairs, unsigned int pairNum);
+
+// draw the link of matched points of two images
+void showMatchResult(const cv::Mat& matL, const cv::Mat& matR, const pointPair* p_pairs, unsigned int pairNum);
 
 #endif // FPLOCATE_H

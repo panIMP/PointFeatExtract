@@ -1,4 +1,5 @@
 #include "imgIO.h"
+#include "error.h"
 #include <stdio.h>
 #include <math.h>
 
@@ -6,10 +7,16 @@
 // print image pixel values into a txt file
 int printImageVal(const char *fileName, const unsigned char *p_img, unsigned short w, unsigned short h, unsigned short dim)
 {
+    if (fileName == NULL || p_img == NULL)
+    {
+        DEBUG_PRINT_DETAILED("null input of file name");
+        return -1;
+    }
+
     FILE* fp;
     if ((fp = fopen(fileName, "w")) == NULL)
     {
-        printf("file open failed in printImageVal\n");
+        DEBUG_PRINT_DETAILED("file open failed in printImageVal\n");
         return -1;
     }
 
@@ -44,6 +51,12 @@ int printImageVal(const char *fileName, const unsigned char *p_img, unsigned sho
 // get size info a sequence of images
 cv::Size getMergeSize(const cv::Mat *p_matArray, unsigned short matNum, Orientation orient)
 {
+    if (p_matArray == NULL)
+    {
+        DEBUG_PRINT_DETAILED("null input of mat arrays");
+        exit(-1);
+    }
+
     unsigned short t_W, t_H;
     unsigned short sumW = 0;
     unsigned short sumH = 0;
@@ -78,8 +91,14 @@ cv::Size getMergeSize(const cv::Mat *p_matArray, unsigned short matNum, Orientat
 }
 
 // combine the images into one single image
-cv::Mat mergeImgs(const cv::Mat *p_matArr, unsigned short matNum, Orientation orient)
+cv::Mat mergeMats(const cv::Mat *p_matArr, unsigned short matNum, Orientation orient)
 {
+    if (p_matArr == NULL)
+    {
+        DEBUG_PRINT_DETAILED("null input of mat arrays");
+        exit(-1);
+    }
+
     cv::Size size = getMergeSize(p_matArr, matNum, orient);
     cv::Mat mergedImg(size, CV_8UC1);
 
@@ -100,7 +119,13 @@ cv::Mat mergeImgs(const cv::Mat *p_matArr, unsigned short matNum, Orientation or
 // create integral image of one image
 unsigned int *createIntegImg(const unsigned char *p_img, unsigned short w, unsigned short h)
 {
-    unsigned int* p_integImg = (unsigned int*)calloc(w * h, sizeof(unsigned int));
+    if (p_img == NULL)
+    {
+        DEBUG_PRINT_DETAILED("null input of image data pointer");
+        exit(-1);
+    }
+
+    unsigned int* p_integImg = (unsigned int*)calloc_check(w * h, sizeof(unsigned int));
 
     p_integImg[0] = p_img[0];
 

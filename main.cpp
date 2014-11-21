@@ -7,9 +7,10 @@
 #include "opencv2/nonfree/features2d.hpp"
 
 #include <time.h>
+#include <error.h>
+#include <stdio.h>
 
 using namespace std;
-
 
 int main()
 {
@@ -21,7 +22,8 @@ int main()
     cout << seperatorStr;
 
     // left image ============================================================================
-    cv::Mat_<unsigned char> matL = cv::imread(string("/home/hupan/destop/Dolls/Illum2/Exp0/view0.png"), cv::IMREAD_GRAYSCALE);
+    DEBUG_PRINT_SIMPLIFIED("\n\nLeft image processing starts!\n\n");
+    cv::Mat_<unsigned char> matL = cv::imread(string("/home/hupan/destop/Dolls/Illum3/Exp0/view0.png"), cv::IMREAD_GRAYSCALE);
     unsigned char* p_imgL = matL.data;
     unsigned short wL = matL.cols;
     unsigned short hL = matL.rows;
@@ -45,7 +47,8 @@ int main()
     free(p_detHesImgPyrL);
 
     // right image ===========================================================================
-    cv::Mat_<unsigned char> matR = cv::imread(string("/home/hupan/destop/Dolls/Illum2/Exp0/view5.png"), cv::IMREAD_GRAYSCALE);
+    DEBUG_PRINT_SIMPLIFIED("\n\nRight image processing starts!\n\n");
+    cv::Mat_<unsigned char> matR = cv::imread(string("/home/hupan/destop/Dolls/Illum3/Exp0/view6.png"), cv::IMREAD_GRAYSCALE);
     unsigned char* p_imgR = matR.data;
     unsigned short wR = matR.cols;
     unsigned short hR = matR.rows;
@@ -69,24 +72,20 @@ int main()
     free(p_detHesImgPyrR);
 
     // match the two images ==================================================================
-    unsigned int matchNum = 0;
-    pointPair* p_matchedPair = matchPointsFeats(p_pointsL, pointNumL, p_pointsR, pointNumR, &matchNum);
+    unsigned int pairNum = 0;
+    pointPair* p_pairs = matchInterestPoints(p_pointsL, pointNumL, p_pointsR, pointNumR, &pairNum);
 
-
-
+    // show match result
+    showMatchResult(matL, matR, p_pairs, pairNum);
 
     // free memory
     free(p_pointsL);
     free(p_pointsR);
+    free(p_pairs);
 
-    // merge the input images into one image
-    cv::Mat_<unsigned char> imgArr[2] = {matL, matR};
-    cv::Mat_<unsigned char> mergedImg = mergeImgs(imgArr, 2, horizontal);
-    cv::imshow("merged initial images", mergedImg);
-
+    // end ===================================================================================
     cv::waitKey();
     cout << algEndStr;
 
     return 0;
 }
-
