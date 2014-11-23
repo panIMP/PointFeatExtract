@@ -509,6 +509,11 @@ void calcFeat(interestPoint* p_point, const unsigned char* p_img, const coord* p
     unsigned long long sumY2 = 0;
     unsigned long long x,y,val,valX, valY;
 
+    if (xCenter == 528 && yCenter == 522)
+    {
+        DEBUG_PRINT_SIMPLIFIED("TEST POINT");
+    }
+
     for (; p_coord != p_coordEnd; ++p_coord)
     {
         x = p_coord->x + xCenter;
@@ -525,16 +530,16 @@ void calcFeat(interestPoint* p_point, const unsigned char* p_img, const coord* p
         sumXY += valX * y;
     }
 
-    double xEven = ((double)sumX) / ((double)sum + 1e-5);
-    double yEven = ((double)sumY) / ((double)sum + 1e-5);
+    double xEven = ((double)sumX) / ((double)sum + FEAT_OFFSET);
+    double yEven = ((double)sumY) / ((double)sum + FEAT_OFFSET);
     double u00 = sum;
     double u20 = sumX2 - 2 * xEven * sumX + xEven * xEven * u00;
     double u02 = sumY2 - 2 * yEven * sumY + yEven * yEven * u00;
     double u11 = sumXY - xEven * sumY - yEven * sumX + xEven * yEven * u00;
     double u00Square = u00 * u00;
-    double n20 = (u20 + 1e-5) / (u00Square + 1e-5);
-    double n02 = (u02 + 1e-5) / (u00Square + 1e-5);
-    double n11 = (u11 + 1e-5) / (u00Square + 1e-5);
+    double n20 = (u20 + FEAT_OFFSET) / (u00Square + FEAT_OFFSET);
+    double n02 = (u02 + FEAT_OFFSET) / (u00Square + FEAT_OFFSET);
+    double n11 = (u11 + FEAT_OFFSET) / (u00Square + FEAT_OFFSET);
 
     p_point->mat.feat[0] = log(n20);
     p_point->mat.feat[1] = log(n02);
@@ -749,9 +754,13 @@ projectMat getProjMatByRansac(const pointPair *p_pairs, unsigned int pairNum)
     unsigned int maxInnerPointNum = 0;
 
     // projection matrix coefficiency
-    projectMat mat, suitMat;
+    projectMat curMat, suitMat, curMat2;
 
     unsigned int iterateNum = 2000*pairNum;
+    cv::Point2f srcTri[3];
+    cv::Point2f dstTri[3];
+    cv::Mat mat(2, 3, CV_32FC1);
+
     for (unsigned int i = 0; i < iterateNum; ++i)
     {
         unsigned int start1 = rand() % pairNum;
@@ -761,91 +770,43 @@ projectMat getProjMatByRansac(const pointPair *p_pairs, unsigned int pairNum)
         const pointPair* p_pair2 = p_pairs + start2;
         const pointPair* p_pair3 = p_pairs + start3;
 
-        // The 6 unknown coefficients for projection matrix
-        //
-        //
-        // | m1	m2	m3 |		|	x	|		|	x^	|
-        // |		   |		|		|		|		|
-        // | m4	m5	m6 |	*	| 	y	|	= 	|	y^	|
-        // |		   |		|		|		|		|
-        // | 0	0	1  |		|	1	|		|	1	|
-        //
-        // ==>
-        //
-        // m1 * x + m2 * y + m3 = x^   ==>   x * m1 + y * m2 + 1 * m3 = x^
-        //
-        // ==>
-        //
-        // | x1 y1 1 |      | m1 |     | x1^ |
-        // |         |      |    |     |
-        // | x2 y2 1 |  *   | m2 |  =  | x2^ |
-        // |         |      |    |     |
-        // | x3 y3 1 |      | m3 |     | x3^ |
-        //
-        // ==> m4 * x + m5 * y + m6 = y^ is the same as above
-        //
-        // (x1, y1), (x2, y2), (x3, y3) stands for three left points and so do (x1^, y1^), (x2^, y2^) ...
-        //
-        // pick three roughly matched pairs to calculate th pairNum - 2e m1, m2, m3....
-        // matA stands for:
-        // | x1 y1 1 |
-        // |         |
-        // | x2 y2 1 |
-        // |         |
-        // | x3 y3 1 |
-        // matB stands for:
-        // | x1^ |      | y1^ |
-        // |     |      |     |
-        // | x2^ |  OR  | y2^ |
-        // |     |      |     |
-        // | x3^ |      | y3^ |
-        // mat123 and mat456 stands for m1,m2,m3 etc...
-        // matA * mat123 = matB OR matA * mat456 = matB
-        cv::Mat_<double> matA = (cv::Mat_<double>(3, 3) << p_pair1->pL.x, p_pair1->pL.y, 1,
-                                 p_pair2->pL.x, p_pair2->pL.y, 1, p_pair3->pL.x, p_pair3->pL.y, 1);
-        cv::Mat_<double> matB = (cv::Mat_<double>(3, 1) << p_pair1->pR.x, p_pair2->pR.x, p_pair3->pR.x);
-        cv::Mat_<double> mat123;
+        srcTri[0] = cv::Point2f(p_pair1->pL.x, p_pair1->pL.y);
+        srcTri[1] = cv::Point2f(p_pair2->pL.x, p_pair2->pL.y);
+        srcTri[2] = cv::Point2f(p_pair3->pL.x, p_pair3->pL.y);
 
-        // if mat123 are solved out, continue to solve mat456, or discard it
-        if (cv::solve(matA, matB, mat123, cv::DECOMP_NORMAL | cv::DECOMP_SVD))
+        dstTri[0] = cv::Point2f(p_pair1->pR.x, p_pair1->pR.y);
+        dstTri[1] = cv::Point2f(p_pair2->pR.x, p_pair2->pR.y);
+        dstTri[2] = cv::Point2f(p_pair3->pR.x, p_pair3->pR.y);
+
+        mat = cv::getAffineTransform(srcTri, dstTri);
+        curMat.m1 = mat.at<double>(0, 0);
+        curMat.m2 = mat.at<double>(0, 1);
+        curMat.m3 = mat.at<double>(0, 2);
+        curMat.m4 = mat.at<double>(1, 0);
+        curMat.m5 = mat.at<double>(1, 1);
+        curMat.m6 = mat.at<double>(1, 2);
+
+        // calculate the inner point number under current coefficients
+        const pointPair* p_pairCur = p_pairs;
+        const pointPair* p_pairEnd = p_pairs + pairNum;
+        unsigned int innerPointNum = 0;
+
+        for (; p_pairCur != p_pairEnd; ++p_pairCur)
         {
-            cv::Mat_<double> matB = (cv::Mat_<double>(3, 1) << p_pair1->pR.y, p_pair2->pR.y, p_pair3->pR.y);
-            cv::Mat_<double> mat456;
-
-            // if mat456 are solved out, continue calculate the inner point num
-            if (cv::solve(matA, matB, mat456, cv::DECOMP_NORMAL | cv::DECOMP_SVD))
+            double expectedRx = curMat.m1 * p_pairCur->pL.x + curMat.m2 * p_pairCur->pL.y + curMat.m3;
+            double expectedRy = curMat.m4 * p_pairCur->pL.x + curMat.m5 * p_pairCur->pL.y + curMat.m6;
+            double dist = pow((expectedRx - p_pairCur->pR.x), 2) + pow((expectedRy - p_pairCur->pR.y), 2);
+            if (dist < distThresh)
             {
-                // the coefficients have been solved out
-                mat.m1 = mat123.at<double>(0, 0);
-                mat.m2 = mat123.at<double>(1, 0);
-                mat.m3 = mat123.at<double>(2, 0);
-                mat.m4 = mat456.at<double>(0, 0);
-                mat.m5 = mat456.at<double>(1, 0);
-                mat.m6 = mat456.at<double>(2, 0);
-
-                // calculate the inner point number under current coefficients
-                const pointPair* p_pairCur = p_pairs;
-                const pointPair* p_pairEnd = p_pairs + pairNum;
-                unsigned int innerPointNum = 0;
-
-                for (; p_pairCur != p_pairEnd; ++p_pairCur)
-                {
-                    double expectedRx = mat.m1 * p_pairCur->pL.x + mat.m2 * p_pairCur->pL.y + mat.m3;
-                    double expectedRy = mat.m4 * p_pairCur->pL.x + mat.m5 * p_pairCur->pL.y + mat.m6;
-                    double dist = pow((expectedRx - p_pairCur->pR.x), 2) + pow((expectedRy - p_pairCur->pR.y), 2);
-                    if (dist < distThresh)
-                    {
-                        ++innerPointNum;
-                    }
-                }
-
-                // only record the coefficients that generates maximum inner point num
-                if (innerPointNum > maxInnerPointNum)
-                {
-                    maxInnerPointNum = innerPointNum;
-                    suitMat = mat;
-                }
+                ++innerPointNum;
             }
+        }
+
+        // only record the coefficients that generates maximum inner point num
+        if (innerPointNum > maxInnerPointNum)
+        {
+            maxInnerPointNum = innerPointNum;
+            suitMat = curMat;
         }
     }
 

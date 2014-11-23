@@ -28,4 +28,7 @@ cv::Mat mergeMats(const cv::Mat* p_matArr, unsigned short matNum, Orientation or
 // create integral image of one image
 unsigned int* createIntegImg(const unsigned char* p_img, unsigned short w, unsigned short h);
 
+// rotate the image by different angles and scales
+void rotateImg(cv::Mat& src, cv::Mat& dst, double angle, double scale);
+
 #endif // IMAGEIO_H

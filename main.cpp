@@ -12,6 +12,7 @@
 
 using namespace std;
 
+
 int main()
 {
     // start algorithm
@@ -23,7 +24,7 @@ int main()
 
     // left image ============================================================================
     DEBUG_PRINT_SIMPLIFIED("\n\nLeft image processing starts!\n\n");
-    cv::Mat_<unsigned char> matL = cv::imread(string("/home/hupan/destop/Dolls/Illum3/Exp0/view0.png"), cv::IMREAD_GRAYSCALE);
+    cv::Mat_<unsigned char> matL = cv::imread(string("/home/hupan/destop/Dolls/Illum1/Exp0/view0.png"), cv::IMREAD_GRAYSCALE);
     unsigned char* p_imgL = matL.data;
     unsigned short wL = matL.cols;
     unsigned short hL = matL.rows;
@@ -48,7 +49,9 @@ int main()
 
     // right image ===========================================================================
     DEBUG_PRINT_SIMPLIFIED("\n\nRight image processing starts!\n\n");
-    cv::Mat_<unsigned char> matR = cv::imread(string("/home/hupan/destop/Dolls/Illum3/Exp0/view6.png"), cv::IMREAD_GRAYSCALE);
+    cv::Mat_<unsigned char> matR = cv::imread(string("/home/hupan/destop/Dolls/Illum1/Exp0/view0.png"), cv::IMREAD_GRAYSCALE);
+    rotateImg(matR, matR, 30, 1.0);
+
     unsigned char* p_imgR = matR.data;
     unsigned short wR = matR.cols;
     unsigned short hR = matR.rows;

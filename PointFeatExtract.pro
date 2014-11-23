@@ -26,3 +26,6 @@ HEADERS += \
 	imgIO.h \
 	error.h
 
+OTHER_FILES += \
+    backup.txt
+

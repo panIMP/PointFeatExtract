@@ -1,0 +1,87 @@
+		/* My implementation of cv::getAffineTransform
+		// The 6 unknown coefficients for projection matrix
+		//
+		//
+		// | m1	m2	m3 |		|	x	|		|	x^	|
+		// |		   |		|		|		|		|
+		// | m4	m5	m6 |	*	| 	y	|	= 	|	y^	|
+		// |		   |		|		|		|		|
+		// | 0	0	1  |		|	1	|		|	1	|
+		//
+		// ==>
+		//
+		// m1 * x + m2 * y + m3 = x^   ==>   x * m1 + y * m2 + 1 * m3 = x^
+		//
+		// ==>
+		//
+		// | x1 y1 1 |      | m1 |     | x1^ |
+		// |         |      |    |     |
+		// | x2 y2 1 |  *   | m2 |  =  | x2^ |
+		// |         |      |    |     |
+		// | x3 y3 1 |      | m3 |     | x3^ |
+		//
+		// ==> m4 * x + m5 * y + m6 = y^ is the same as above
+		//
+		// (x1, y1), (x2, y2), (x3, y3) stands for three left points and so do (x1^, y1^), (x2^, y2^) ...
+		//
+		// pick three roughly matched pairs to calculate th pairNum - 2e m1, m2, m3....
+		// matA stands for:
+		// | x1 y1 1 |
+		// |         |
+		// | x2 y2 1 |
+		// |         |
+		// | x3 y3 1 |
+		// matB stands for:
+		// | x1^ |      | y1^ |
+		// |     |      |     |
+		// | x2^ |  OR  | y2^ |
+		// |     |      |     |
+		// | x3^ |      | y3^ |
+		// mat123 and mat456 stands for m1,m2,m3 etc...
+		// matA * mat123 = matB OR matA * mat456 = matB
+		cv::Mat_<double> matA = (cv::Mat_<double>(3, 3) << p_pair1->pL.x, p_pair1->pL.y, 1,
+		p_pair2->pL.x, p_pair2->pL.y, 1, p_pair3->pL.x, p_pair3->pL.y, 1);
+		cv::Mat_<double> matB = (cv::Mat_<double>(3, 1) << p_pair1->pR.x, p_pair2->pR.x, p_pair3->pR.x);
+		cv::Mat_<double> mat123;
+
+		// if mat123 are solved out, continue to solve mat456, or discard it
+		if (cv::solve(matA, matB, mat123, cv::DECOMP_NORMAL | cv::DECOMP_SVD))
+		{
+		cv::Mat_<double> matB = (cv::Mat_<double>(3, 1) << p_pair1->pR.y, p_pair2->pR.y, p_pair3->pR.y);
+		cv::Mat_<double> mat456;
+
+			// if mat456 are solved out, continue calculate the inner point num
+			if (cv::solve(matA, matB, mat456, cv::DECOMP_NORMAL | cv::DECOMP_SVD))
+			{
+			// the coefficients have been solved out
+			mat.m1 = mat123.at<double>(0, 0);
+			mat.m2 = mat123.at<double>(1, 0);
+			mat.m3 = mat123.at<double>(2, 0);
+			mat.m4 = mat456.at<double>(0, 0);
+			mat.m5 = mat456.at<double>(1, 0);
+			mat.m6 = mat456.at<double>(2, 0);
+
+				// calculate the inner point number under current coefficients
+				const pointPair* p_pairCur = p_pairs;
+				const pointPair* p_pairEnd = p_pairs + pairNum;
+				unsigned int innerPointNum = 0;
+
+				for (; p_pairCur != p_pairEnd; ++p_pairCur)
+				{
+				double expectedRx = mat.m1 * p_pairCur->pL.x + mat.m2 * p_pairCur->pL.y + mat.m3;
+				double expectedRy = mat.m4 * p_pairCur->pL.x + mat.m5 * p_pairCur->pL.y + mat.m6;
+				double dist = pow((expectedRx - p_pairCur->pR.x), 2) + pow((expectedRy - p_pairCur->pR.y), 2);
+				if (dist < distThresh)
+				{
+				++innerPointNum;
+				}
+				}
+
+				// only record the coefficients that generates maximum inner point num
+				if (innerPointNum > maxInnerPointNum)
+				{
+				maxInnerPointNum = innerPointNum;
+				suitMat = mat;
+				}
+				}
+				}

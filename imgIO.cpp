@@ -2,6 +2,8 @@
 #include "error.h"
 #include <stdio.h>
 #include <math.h>
+#include <opencv2/imgproc/imgproc.hpp>
+#include <opencv2/highgui/highgui.hpp>
 
 
 // print image pixel values into a txt file
@@ -146,6 +148,16 @@ unsigned int *createIntegImg(const unsigned char *p_img, unsigned short w, unsig
     }
 
     return p_integImg;
+}
+
+// rotate the image by different angles and scales
+void rotateImg(cv::Mat& src, cv::Mat& dst, double angle, double scale)
+{
+    //dst = cv::Mat::zeros(src.rows, src.cols, src.type());
+
+    cv::Point2f center((double)(dst.cols/2) , (double)(dst.rows/2));
+    cv::Mat rotateMat = cv::getRotationMatrix2D(center, angle, scale);
+    cv::warpAffine(src, dst, rotateMat, dst.size());
 }
 
 

@@ -54,12 +54,13 @@ typedef double featElemType;
 #define FEAT_NUM 3
 #define FEAT_MAX 1E20
 #define FEAT_MIN -1E20
+#define FEAT_OFFSET 1E-20
 
 typedef struct HU_MATRIX
 {
     // feat[0]: log(n20)
     // feat[1]: log(n02)
-    // feat[2]: log(abs(n11
+    // feat[2]: log(abs(n11))
     featElemType feat[FEAT_NUM];
 }huMat;
 
