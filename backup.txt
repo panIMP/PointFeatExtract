@@ -85,3 +85,33 @@
 				}
 				}
 				}
+
+
+
+		for (int f = 0; f < FEAT_NUM; ++f)
+		{
+			if (featMax < p_pointsCur->mat.feat[f])
+				featMax = p_pointsCur->mat.feat[f];
+
+			if (featMin > p_pointsCur->mat.feat[f])
+				featMin = p_pointsCur->mat.feat[f];
+		}
+
+		DEBUG_PRINT_SIMPLIFIED("Point%4d: (%4d, %4d), Feat: (%lf, %lf, %lf)\n", curPointSeq, p_pointsCur->c.x, p_pointsCur->c.y,
+							   p_pointsCur->mat.feat[0], p_pointsCur->mat.feat[1], p_pointsCur->mat.feat[2]);
+	}
+	featGap = featMax - featMin;
+
+	// normalize the points feat
+//    curPointSeq = 1;
+//    for (p_pointsCur = p_points; p_pointsCur != p_pointsEnd; ++p_pointsCur, ++curPointSeq)
+//    {
+//        for (int f = 0; f < FEAT_NUM; ++f)
+//        {
+//            p_pointsCur->mat.feat[f] = (p_pointsCur->mat.feat[f] - featMin) / featGap;
+//        }
+
+//        DEBUG_PRINT_SIMPLIFIED("Point%4d: (%4d, %4d), Feat: (%lf, %lf, %lf)\n", curPointSeq, p_pointsCur->c.x,
+//        p_pointsCur->c.y, p_pointsCur->mat.feat[0], p_pointsCur->mat.feat[1], p_pointsCur->mat.feat[2]);
+//    }
+

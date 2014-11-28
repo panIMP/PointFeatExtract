@@ -10,7 +10,7 @@ void *calloc_check(size_t _NumOfElements, size_t _SizeOfElements);
 
 
 #define DEBUG
-
+#undef DEBUG
 
 #ifdef DEBUG
 #define DEBUG_PRINT_DETAILED(format, args...) printf("\n\nFile: " __FILE__ "\n" "Line: %d\nMsgs: " format, __LINE__, ##args)

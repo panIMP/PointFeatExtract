@@ -4,6 +4,9 @@
 #include <math.h>
 #include <opencv2/imgproc/imgproc.hpp>
 #include <opencv2/highgui/highgui.hpp>
+#include <iostream>
+
+using namespace std;
 
 
 // print image pixel values into a txt file
@@ -28,7 +31,7 @@ int printImageVal(const char *fileName, const unsigned char *p_img, unsigned sho
         {
             for (unsigned short i = 0; i < w; ++i, ++p_img)
             {
-                fprintf(fp, "%4d", *p_img);
+                fprintf(fp, "%-4d", *p_img);
             }
             fprintf(fp, "\n");
         }
@@ -102,7 +105,7 @@ cv::Mat mergeMats(const cv::Mat *p_matArr, unsigned short matNum, Orientation or
     }
 
     cv::Size size = getMergeSize(p_matArr, matNum, orient);
-    cv::Mat mergedImg(size, CV_8UC1);
+    cv::Mat mergedImg(size, CV_8UC3);
 
     unsigned short leftTopX = 0;
     unsigned short leftTopY = 0;
@@ -153,11 +156,35 @@ unsigned int *createIntegImg(const unsigned char *p_img, unsigned short w, unsig
 // rotate the image by different angles and scales
 void rotateImg(cv::Mat& src, cv::Mat& dst, double angle, double scale)
 {
-    //dst = cv::Mat::zeros(src.rows, src.cols, src.type());
+    int h = src.rows * scale;
+    int w = src.cols * scale;
+    int digonal = sqrt(w * w + h * h);
+    int dh = (digonal - h) / 2;
+    int dw = (digonal - w) / 2;
 
-    cv::Point2f center((double)(dst.cols/2) , (double)(dst.rows/2));
+    cv::copyMakeBorder(src, dst, dh, dh, dw, dw, cv::BORDER_CONSTANT);
+
+    cv::Point2f center((((double)dst.cols) / 2.0), (((double)dst.rows) / 2.0));
+
     cv::Mat rotateMat = cv::getRotationMatrix2D(center, angle, scale);
-    cv::warpAffine(src, dst, rotateMat, dst.size());
+
+    cv::warpAffine(dst, dst, rotateMat, dst.size());
+
+    double radian = (double)(((double)angle) / 180.0 * CV_PI);
+    double sinVal = fabs(sin(radian));
+    double cosVal = fabs(cos(radian));
+
+    cv::Size targetSize((int)(w * cosVal + h * sinVal),(int)(w * sinVal + h * cosVal));
+
+    int x = (dst.cols - targetSize.width) / 2;
+    int y = (dst.rows - targetSize.height) / 2;
+
+    cv::Rect rect(x, y, targetSize.width, targetSize.height);
+
+    dst = cv::Mat(dst, rect);
+
+//    cv::imwrite("dst.png", dst);
+//    dst = cv::imread("dst.png", cv::IMREAD_GRAYSCALE);
 }
 
 

@@ -4,15 +4,15 @@ CONFIG -= app_bundle
 CONFIG -= qt
 CONFIG += c++11
 
-INCLUDEPATH += /home/hupan/download/opencv-2.4.9/release/usr/local/include/
+INCLUDEPATH += G:\opencv_mingw_hpbuild\install\include\
 
 
-LIBS += /home/hupan/download/opencv-2.4.9/release/usr/local/lib/libopencv_core.so \
-		/home/hupan/download/opencv-2.4.9/release/usr/local/lib/libopencv_imgproc.so \
-		/home/hupan/download/opencv-2.4.9/release/usr/local/lib/libopencv_highgui.so \
-		/home/hupan/download/opencv-2.4.9/release/usr/local/lib/libopencv_features2d.so \
-		/home/hupan/download/opencv-2.4.9/release/usr/local/lib/libopencv_nonfree.so \
-		/home/hupan/download/opencv-2.4.9/release/usr/local/lib/libopencv_legacy.so
+LIBS += G:\opencv_mingw_hpbuild\install\lib\libopencv_core244d.dll.a \
+        G:\opencv_mingw_hpbuild\install\lib\libopencv_imgproc244d.dll.a \
+        G:\opencv_mingw_hpbuild\install\lib\libopencv_highgui244d.dll.a \
+        G:\opencv_mingw_hpbuild\install\lib\libopencv_features2d244d.dll.a \
+        G:\opencv_mingw_hpbuild\install\lib\libopencv_nonfree244d.dll.a \
+        G:\opencv_mingw_hpbuild\install\lib\libopencv_legacy244d.dll.a
 
 SOURCES += main.cpp \
 	interestPointLocate.cpp \

@@ -9,6 +9,7 @@
 #include "opencv2/highgui/highgui.hpp"
 #include "opencv2/imgproc/imgproc.hpp"
 
+
 using namespace std;
 
 
@@ -222,7 +223,27 @@ const Filt g_filts[OCTAVE_NUM][LAYER_NUM][FILT_NUM]=
 
 
 // draw the rectangle around the interest point
-void drawRect(unsigned char *p_img, const interestPoint *p_points, unsigned short pointNum, unsigned short r, unsigned short w)
+void drawRect(cv::Mat& mat, const InterestPoint *p_points, unsigned short pointNum,
+              unsigned short step, unsigned short r, cv::Scalar color)
+{
+    if (p_points == NULL)
+    {
+        DEBUG_PRINT_DETAILED("null input of image pointer or interest points pointer");
+        exit(-1);
+    }
+
+    const InterestPoint* p_pointsCur = p_points;
+    const InterestPoint* p_pointsEnd = p_points + pointNum;
+    for (; p_pointsCur < p_pointsEnd; p_pointsCur+=step)
+    {
+        cv::Point center(p_pointsCur->c.x, p_pointsCur->c.y);
+        cv::circle(mat, center, r, color);
+    }
+}
+
+// draw the rectangle around the interest point
+void drawRect(unsigned char *p_img, const InterestPoint *p_points, unsigned short pointNum,
+              unsigned short r, unsigned short w, unsigned char pixVal)
 {
     if (p_img == NULL || p_points == NULL)
     {
@@ -236,7 +257,7 @@ void drawRect(unsigned char *p_img, const interestPoint *p_points, unsigned shor
         {
             for (unsigned short x = p_points[p].c.x - r/2; x <= p_points[p].c.x + r/2; ++x)
             {
-                p_img[y * w + x] = 255;
+                p_img[y * w + x] = pixVal;
             }
         }
     }
@@ -247,7 +268,8 @@ void initFiltPtrs(unsigned int *p_integImg, FiltCornPtrs* p_filtCornPtrss, const
 {
     if (p_integImg == NULL || p_filtCornPtrss == NULL || p_filts == NULL)
     {
-        DEBUG_PRINT_DETAILED("null input of integral image pointer or filter corner pointers or filter template pointer");
+        DEBUG_PRINT_DETAILED("null input of integral image pointer\
+                             or filter corner pointers or filter template pointer");
         exit(-1);
     }
 
@@ -315,7 +337,7 @@ void calcDetHes(const FiltCornPtrs *p_filtCornPtrss, double* p_detHesImg)
 }
 
 // create the det(Hessin) image of the input integral image at one specific octave and layer
-void createDetHesImg(unsigned int *p_integImg, double* p_detHesImg,
+void createDetHesImg(unsigned int *p_integImg, double* p_detHesImg, double* p_maxPerLay,
                      unsigned short octOrder, unsigned short layOrder, unsigned short w, unsigned short h)
 {
     if (p_integImg == NULL || p_detHesImg == NULL)
@@ -343,6 +365,7 @@ void createDetHesImg(unsigned int *p_integImg, double* p_detHesImg,
     // iterate over the image
     FiltCornPtrs t_filtCornPtrss[FILT_NUM];
     double* t_p_detHesImg;
+    double maxPerLay = FEAT_MIN;
     for (unsigned short y = stY; y < enY; ++y, incFiltPtrs(filtCornPtrss, w))
     {
         t_p_detHesImg = p_detHesImg + y * w + stX;
@@ -353,13 +376,20 @@ void createDetHesImg(unsigned int *p_integImg, double* p_detHesImg,
         for (unsigned short x = stX; x < enX; ++x, ++t_p_detHesImg, incFiltPtrs(t_filtCornPtrss, 1))
         {
             calcDetHes(t_filtCornPtrss, t_p_detHesImg);
+
+            if (maxPerLay < *t_p_detHesImg)
+                maxPerLay = *t_p_detHesImg;
         }
     }
+
+    *p_maxPerLay = maxPerLay;
 }
 
 // create the det(Hessin) image pyramid of certain number of octaves and layers
 // returns pointers to the image pyramid, first pixel of the image in the first layer of the first octave
-double* createDetHesImgPyr(unsigned int *p_integImg, unsigned short octNum, unsigned short layNum, unsigned short w, unsigned short h)
+MaxDetHesOctave createDetHesImgPyr(double* p_detHesImgPyr, unsigned int *p_integImg,
+                                   unsigned short octNum, unsigned short layNum,
+                                   unsigned short w, unsigned short h)
 {
     if (p_integImg == NULL)
     {
@@ -367,19 +397,25 @@ double* createDetHesImgPyr(unsigned int *p_integImg, unsigned short octNum, unsi
         exit(-1);
     }
 
-    double* p_detHesImgPyr = (double*)calloc_check(OCTAVE_NUM * LAYER_NUM * w * h, sizeof(double));
+    MaxDetHesOctave maxVal;
+    unsigned int totalSize = w * h;
 
     // create pyramid
     for (unsigned short octOrder = 0; octOrder < octNum; ++octOrder)
     {
+        double* t_p_detHesImgPyr = p_detHesImgPyr + octOrder * LAYER_NUM * w * h;
         for (unsigned short layOrder = 0; layOrder < layNum; ++layOrder)
         {
-            createDetHesImg(p_integImg, p_detHesImgPyr, octOrder, layOrder, w, h);
-            p_detHesImgPyr += w * h;
+            maxVal.maxPerOct[octOrder].maxPerLay[layOrder] = DETHES_MIN;
+
+            double* p_maxPerLay = &(maxVal.maxPerOct[octOrder].maxPerLay[layOrder]);
+            createDetHesImg(p_integImg, t_p_detHesImgPyr, p_maxPerLay, octOrder, layOrder, w, h);
+
+            t_p_detHesImgPyr += totalSize;
         }
     }
 
-    return (p_detHesImgPyr - w * h * OCTAVE_NUM * LAYER_NUM);
+    return maxVal;
 }
 
 // find the interest point
@@ -440,7 +476,8 @@ int isRegionMaximum(const double *p_in, unsigned short w, unsigned short h)
 
 // get the interest points location
 // returns the number of the founded interst points
-int getPointsLocations(interestPoint* p_points, const double* p_detHesImgPyr,
+PointNum getPointsLocations(InterestPoint* p_points, unsigned char* p_markImg,
+                       const double* p_detHesImgPyr, MaxDetHesOctave maxVal,
                        unsigned short octNum, unsigned short layNum, unsigned short w, unsigned short h)
 {
     if (p_points == NULL || p_detHesImgPyr == NULL)
@@ -449,49 +486,93 @@ int getPointsLocations(interestPoint* p_points, const double* p_detHesImgPyr,
         exit(-1);
     }
 
+    PointNum num = {0, 0};
     unsigned int totalSize = w * h;
-    unsigned int filtSize = w * (h - 2) - 2;
-    interestPoint* p_out = p_points;
-    unsigned char* p_markImg = (unsigned char*)calloc_check(totalSize, sizeof(unsigned char));
+    unsigned int filtSize = w * (h - 1) - 1;
+    InterestPoint* p_out = p_points;
 
-    for (unsigned short octOrder = 2; octOrder < octNum; ++octOrder)
+    /*for (unsigned short octOrder = 1; octOrder < octNum; ++octOrder)
     {
-        for (unsigned short layOrder = 1; layOrder < layNum - 1; ++layOrder)
+        for (unsigned short layOrder = 0; layOrder < layNum - 1; ++layOrder)
         {
+            double detHesThresh = maxVal.maxPerOct[octOrder].maxPerLay[layOrder] * 0.05;
             const double* p_detHesImg = p_detHesImgPyr + (octOrder * layNum + layOrder) * totalSize;
 
-            for (unsigned int c = 0; c < filtSize; ++c, ++p_detHesImg)
+            for (unsigned int c = w + 1; c < filtSize; ++c, ++p_detHesImg)
             {
-                if (isRegionMaximum(p_detHesImg, w, h))
+                //if (isRegionMaximum(p_detHesImg, w, h))
+                if (*p_detHesImg > detHesThresh && isRegionMaximum(p_detHesImg, w, h))
                 {
                     // mark the interest points first
-                    p_markImg[c + w + 1] = 1;
+                    p_markImg[c] = 1;
                 }
+            }
+        }
+    }*/
+
+    unsigned short sequNum = octNum * layNum;
+    for (unsigned short sequOrder = 1; sequOrder < sequNum - 1; ++sequOrder)
+    {
+        unsigned short octOrder = sequOrder / layNum;
+        unsigned short layOrder = sequOrder - octOrder * OCTAVE_NUM;
+        double detHesThresh = maxVal.maxPerOct[octOrder].maxPerLay[layOrder] * 0.1;
+        const double* p_detHesImg = p_detHesImgPyr + sequOrder * totalSize;
+
+        for (unsigned int c = w + 1; c < filtSize; ++c, ++p_detHesImg)
+        {
+            //if (isRegionMaximum(p_detHesImg, w, h))
+            if (*p_detHesImg > detHesThresh && isRegionMaximum(p_detHesImg, w, h))
+            {
+                // mark the interest points first
+                p_markImg[c] = 1;
             }
         }
     }
 
+
     // store the pixels into interst point arrays
+    unsigned int realNum = 0;
     for (unsigned int i = 0; i < totalSize; ++i)
     {
         if (p_markImg[i] == 1)
         {
-            p_out->c.y = i / w;
-            p_out->c.x = i - p_out->c.y * w;
+            realNum++;
+        }
+    }
+    num.realNum = realNum;
+
+    unsigned short r = sqrt(((double)(w * h)) / (double)(realNum));
+    unsigned xEnd = w - r;
+    unsigned yEnd = h - r;
+    for (unsigned int i = 0; i < totalSize; ++i)
+    {
+        if (p_markImg[i] == 1)
+        {
+            unsigned short y = i / w;
+            unsigned short x = i - y * w;
+            if (y <= r || y >= yEnd || x <= r || x >= xEnd)
+            {
+                p_markImg[i] = 0;
+                continue;
+            }
+
+            p_out->c.x = x;
+            p_out->c.y = y;
             p_out++;
         }
     }
+    num.calcNum = p_out - p_points;
 
-    // free memory
-    free(p_markImg);
-
-    return p_out - p_points;
+    return num;
 }
 
+
 // calculate the feature of one interest point
-void calcFeat(interestPoint* p_point, const unsigned char* p_img, const coord* p_coord, int neighPointNum, unsigned short w)
+void calcFeat(InterestPoint* p_point, const unsigned char* p_img, const unsigned char* p_markImg,
+              const coord* p_coordHuMat, const coord* p_coordNeigh,
+              int neighPointNumHuMat, int neightPointNumNeigh, unsigned short w)
 {
-    if (p_point == NULL || p_img == NULL || p_coord == NULL)
+    if (p_point == NULL || p_img == NULL || p_coordHuMat == NULL)
     {
         DEBUG_PRINT_DETAILED("null input of interest pointer set pointer or image pointer or array pointer");
         exit(-1);
@@ -499,55 +580,233 @@ void calcFeat(interestPoint* p_point, const unsigned char* p_img, const coord* p
 
     unsigned short xCenter = p_point->c.x;
     unsigned short yCenter = p_point->c.y;
-    const coord* p_coordEnd = p_coord + neighPointNum;
 
+    //Feat 1: hu-mat feat
+    const coord* p_coordHuMatEnd = p_coordHuMat + neighPointNumHuMat;
     unsigned long long sum = 0;
     unsigned long long sumX = 0;
     unsigned long long sumY = 0;
-    unsigned long long sumXY = 0;
     unsigned long long sumX2 = 0;
     unsigned long long sumY2 = 0;
-    unsigned long long x,y,val,valX, valY;
-
-    if (xCenter == 528 && yCenter == 522)
+    unsigned long long sumXY = 0;
+    unsigned long long sumX3 = 0;
+    unsigned long long sumY3 = 0;
+    unsigned long long sumX2Y = 0;
+    unsigned long long sumXY2 = 0;
+    unsigned long long x,y,x2,y2,xy,x3,y3,x2y,xy2,val;
+    for (; p_coordHuMat != p_coordHuMatEnd; ++p_coordHuMat)
     {
-        DEBUG_PRINT_SIMPLIFIED("TEST POINT");
-    }
+        x = p_coordHuMat->x + xCenter;
+        y = p_coordHuMat->y + yCenter;
+        xy = x * y;
+        x2 = x * x;
+        x3 = x2 * x;
+        y2 = y * y;
+        y3 = y2 * y;
+        x2y = x2 * y;
+        xy2 = x * y2;
 
-    for (; p_coord != p_coordEnd; ++p_coord)
-    {
-        x = p_coord->x + xCenter;
-        y = p_coord->y + yCenter;
         val = p_img[y * w + x];
-        valX = val * x;
-        valY = val * y;
 
         sum += val;
-        sumX += valX;
-        sumY += valY;
-        sumX2 += valX * x;
-        sumY2 += valY * y;
-        sumXY += valX * y;
+        sumX += (val * x);
+        sumY += (val * y);
+        sumX2 += (val * x2);
+        sumY2 += (val * y2);
+        sumXY += (val * xy) ;
+        sumX3 += (val * x3);
+        sumY3 += (val * y3);
+        sumX2Y += (val * x2y);
+        sumXY2 += (val * xy2);
     }
-
     double xEven = ((double)sumX) / ((double)sum + FEAT_OFFSET);
     double yEven = ((double)sumY) / ((double)sum + FEAT_OFFSET);
+    double xEven2 = xEven * xEven;
+    double yEven2 = yEven * yEven;
+    double xEvenyEvne = xEven * yEven;
+    double xEven3 = xEven2 * xEven;
+    double yEven3 = yEven2 * yEven;
+    double xEven2yEven = xEven2 * yEven;
+    double xEvenyEven2 = xEven * yEven2;
     double u00 = sum;
     double u20 = sumX2 - 2 * xEven * sumX + xEven * xEven * u00;
     double u02 = sumY2 - 2 * yEven * sumY + yEven * yEven * u00;
     double u11 = sumXY - xEven * sumY - yEven * sumX + xEven * yEven * u00;
-    double u00Square = u00 * u00;
-    double n20 = (u20 + FEAT_OFFSET) / (u00Square + FEAT_OFFSET);
-    double n02 = (u02 + FEAT_OFFSET) / (u00Square + FEAT_OFFSET);
-    double n11 = (u11 + FEAT_OFFSET) / (u00Square + FEAT_OFFSET);
+    double u30 = sumX3 - 3 * sumX2 * xEven + 3 * sumX * xEven2 - xEven3 * u00;
+    double u03 = sumY3 - 3 * sumY2 * yEven + 3 * sumY * yEven2 - yEven3 * u00;
+    double u21 = sumX2Y - 2 * sumXY * xEven + sumY * xEven2 - sumX2 * yEven + 2 * sumX * xEvenyEvne - xEven2yEven * u00;
+    double u12 = sumXY2 - 2 * sumXY * yEven + sumX * yEven2 - sumY2 * xEven + 2 * sumY * xEvenyEvne - xEvenyEven2 * u00;
 
-    p_point->mat.feat[0] = log(n20);
-    p_point->mat.feat[1] = log(n02);
-    p_point->mat.feat[2] = log(abs(n11));
+    //Feat 1: hu-mat feat
+    const coord* p_coordNeighEnd = p_coordNeigh + neightPointNumNeigh;
+    double neigh = 0.0;
+    for (; p_coordNeigh != p_coordNeighEnd; ++p_coordNeigh)
+    {
+        if (p_coordNeigh->x == 0 && p_coordNeigh->y == 0)
+        {
+            x = 0;
+        }
+        x = p_coordNeigh->x + xCenter;
+        y = p_coordNeigh->y + yCenter;
+
+        if (p_markImg[y * w + x] == 1)
+        {
+            double dist = p_coordNeigh->x * p_coordNeigh->x + p_coordNeigh->y * p_coordNeigh->y;
+            dist = dist / ((double)(w * w));
+            neigh += pow(2, -sqrt(dist));
+        }
+    }
+
+
+    // =========== Hu ===============
+/*    double u00Square = u00 * u00 + FEAT_OFFSET;
+    double u0025 = pow(u00, 2.5) + FEAT_OFFSET;
+    double n20 = (u20 + FEAT_OFFSET) / u00Square;
+    double n02 = (u02 + FEAT_OFFSET) / u00Square;
+    double n11 = (u11 + FEAT_OFFSET) / u00Square;
+    double n30 = (u30 + FEAT_OFFSET) / u0025;
+    double n03 = (u03 + FEAT_OFFSET) / u0025;
+    double n21 = (u21 + FEAT_OFFSET) / u0025;
+    double n12 = (u12 + FEAT_OFFSET) / u0025;
+
+    double t1 = n30 + n12;
+    double t2 = n21 + n03;
+    double t3 = n30 - 3 * n12;
+    double t4 = 3 * n21 - n03;
+
+    double t12 = pow(t1, 2);
+    double t22 = pow(t2, 2);
+    double t32 = pow(t3, 2);
+    double t42 = pow(t4, 2);
+
+    double m1 = n20 + n02;
+    double m2 = pow((n20 - n02), 2) + 4 * n11 * n11;
+    double m3 = t32 + t42;
+    double m4 = t12 + t22;
+    double m5 = t3 * t1 * (t12 - 3 * t22) + t4 * t2 *(3 * t12 - t22);
+    double m6 = (n20 - n02) * (t12 - t22) + 4 * n11 * t1 * t2;
+    double m7 = t4 * t1 * (t12 - 3 * t22) - t3 * t2 * (3 * t12 - t22);
+
+    p_point->mat.feat[0] = m1;
+    p_point->mat.feat[1] = m2;
+    p_point->mat.feat[2] = m3;
+    p_point->mat.feat[3] = m4;
+    p_point->mat.feat[4] = m5;
+    p_point->mat.feat[5] = m6;
+    p_point->mat.feat[6] = m7;
+*/
+
+    // ========== Modified Hu1 ==============
+    double u00Square = u00 * u00 + FEAT_OFFSET;
+    double u00Cubic = pow(u00, 3) + FEAT_OFFSET;
+    double u00div = u00 + FEAT_OFFSET;
+    double n20 = (u20 + FEAT_OFFSET) / u00div;
+    double n02 = (u02 + FEAT_OFFSET) / u00div;
+    double n11 = (u11 + FEAT_OFFSET) / u00div;
+    double n30 = (u30 + FEAT_OFFSET) / u00div;
+    double n03 = (u03 + FEAT_OFFSET) / u00div;
+    double n21 = (u21 + FEAT_OFFSET) / u00div;
+    double n12 = (u12 + FEAT_OFFSET) / u00div;
+
+    double m1 = n20 + n02;
+    double m2 = n21 + n12;
+    double m3 = n30 + n03;
+    double m4 = 2 * n11;
+
+    p_point->mat.feat[0] = m1;
+    p_point->mat.feat[1] = m2;
+    p_point->mat.feat[2] = m3;
+    p_point->mat.feat[3] = m4;
+//    p_point->mat.feat[4] = neigh;
+//    p_point->mat.feat[5] = p_img[yCenter * w + xCenter];
+
+
+/*
+    // ========== Modified Hu2 ==============
+    double u00Square = u00 * u00 + FEAT_OFFSET;
+    double u0025 = pow(u00, 2.5) + FEAT_OFFSET;
+    double n20 = (u20 + FEAT_OFFSET) / u00Square;
+    double n02 = (u02 + FEAT_OFFSET) / u00Square;
+    double n11 = (u11 + FEAT_OFFSET) / u00Square;
+    double n30 = (u30 + FEAT_OFFSET) / u0025;
+    double n03 = (u03 + FEAT_OFFSET) / u0025;
+    double n21 = (u21 + FEAT_OFFSET) / u0025;
+    double n12 = (u12 + FEAT_OFFSET) / u0025;
+
+    double t1 = n30 + n12;
+    double t2 = n21 + n03;
+    double t3 = n30 - 3 * n12;
+    double t4 = 3 * n21 - n03;
+
+    double t12 = pow(t1, 2);
+    double t22 = pow(t2, 2);
+    double t32 = pow(t3, 2);
+    double t42 = pow(t4, 2);
+
+    double m1 = n20 + n02;
+    double m2 = pow((n20 - n02), 2) + 4 * n11 * n11;
+    double m3 = t32 + t42;
+    double m4 = t12 + t22;
+    double m5 = t3 * t1 * (t12 - 3 * t22) + t4 * t2 *(3 * t12 - t22);
+    double m6 = (n20 - n02) * (t12 - t22) + 4 * n11 * t1 * t2;
+    double m7 = t4 * t1 * (t12 - 3 * t22) - t3 * t2 * (3 * t12 - t22);
+
+    double f1 = sqrt(m2) / (m1 + FEAT_OFFSET);
+    double f2 = sqrt(m4 / (m3 + FEAT_OFFSET));
+    double f3 = m3 * u00 / (m1 * m2 + FEAT_OFFSET);
+    double f4 = m3 / (m1 * m1 * m1 + FEAT_OFFSET);
+    double f5 = m4 / (m1 * m1 * m1 + FEAT_OFFSET);
+
+    p_point->mat.feat[0] = f1;
+    p_point->mat.feat[1] = f2;
+    p_point->mat.feat[2] = f3;
+    p_point->mat.feat[3] = f4;
+    p_point->mat.feat[4] = f5;
+*/
+
+
+    // ========== Modified Hu3 ==============
+/*    double u00Square = u00 * u00 + FEAT_OFFSET;
+    double u0025 = pow(u00, 2.5) + FEAT_OFFSET;
+    double n20 = (u20 + FEAT_OFFSET) / u00Square;
+    double n02 = (u02 + FEAT_OFFSET) / u00Square;
+    double n11 = (u11 + FEAT_OFFSET) / u00Square;
+    double n30 = (u30 + FEAT_OFFSET) / u0025;
+    double n03 = (u03 + FEAT_OFFSET) / u0025;
+    double n21 = (u21 + FEAT_OFFSET) / u0025;
+    double n12 = (u12 + FEAT_OFFSET) / u0025;
+
+    double t1 = n30 + n12;
+    double t2 = n21 + n03;
+    double t3 = n30 - 3 * n12;
+    double t4 = 3 * n21 - n03;
+
+    double t12 = pow(t1, 2);
+    double t22 = pow(t2, 2);
+    double t32 = pow(t3, 2);
+    double t42 = pow(t4, 2);
+
+    double m1 = n20 + n02;
+    double m2 = pow((n20 - n02), 2) + 4 * n11 * n11;
+    double m3 = t32 + t42;
+    double m4 = t12 + t22;
+    double m5 = t3 * t1 * (t12 - 3 * t22) + t4 * t2 *(3 * t12 - t22);
+    double m6 = (n20 - n02) * (t12 - t22) + 4 * n11 * t1 * t2;
+    double m7 = t4 * t1 * (t12 - 3 * t22) - t3 * t2 * (3 * t12 - t22);
+
+    double f1 = m4 / m3;
+    double f2 = m7 / m5;
+    double f3 = m5 / (m4 * m3);
+
+    p_point->mat.feat[0] = f1;
+    p_point->mat.feat[1] = f2;
+    p_point->mat.feat[2] = f3;*/
+
 }
 
 // calculate the features of all the located interest points
-void getPointsFeats(interestPoint* p_points, unsigned int pointNum, const unsigned char *p_img, unsigned short w, unsigned short r)
+void getPointsFeats(InterestPoint* p_points, const unsigned char *p_markImg, unsigned int pointNum,
+                    const unsigned char *p_img, unsigned short w, unsigned short r)
 {
     if (p_points == NULL || p_img == NULL)
     {
@@ -555,64 +814,37 @@ void getPointsFeats(interestPoint* p_points, unsigned int pointNum, const unsign
         exit(-1);
     }
 
-    unsigned int neighPointNum = 0;
-    coord* p_coord = calcDiskTmplArray(r, &neighPointNum);
+    unsigned int neighPointNumHuMat = 0;
+    coord* p_coordHuMat = calcDiskTmplArray(r, &neighPointNumHuMat);
+    unsigned int neighPointNumNeigh = 0;
+    coord* p_coordNeigh = calcDiskTmplArray(r, &neighPointNumNeigh);
 
-    interestPoint* p_pointsEnd = p_points + pointNum;
-    interestPoint* p_pointsCur = p_points;
-
-    // the sum of all feat and the the sample deta -- for normalization
-    /*featElemType featSum[FEAT_NUM] = {0.0};
-    featElemType featDeta[FEAT_NUM] = {0.0};
-    featElemType featEven[FEAT_NUM] = {0.0};*/
+    InterestPoint* p_pointsEnd = p_points + pointNum;
+    InterestPoint* p_pointsCur = p_points;
 
     // get the points feat
     unsigned int curPointSeq = 1;
     for (; p_pointsCur != p_pointsEnd; ++p_pointsCur, ++curPointSeq)
     {
-        calcFeat(p_pointsCur, p_img, p_coord, neighPointNum, w);
+        calcFeat(p_pointsCur, p_img, p_markImg, p_coordHuMat, p_coordNeigh, neighPointNumHuMat, neighPointNumNeigh, w);
 
-        /*for (int f = 0; f < FEAT_NUM; ++f)
-        {
-            featSum[f] += curMat.feat[f];
-        }*/
-
-        DEBUG_PRINT_SIMPLIFIED("Point%4d: (%4d, %4d), Feat: (%lf, %lf, %lf)\n", curPointSeq, p_pointsCur->c.x, p_pointsCur->c.y,
-                               p_pointsCur->mat.feat[0], p_pointsCur->mat.feat[1], p_pointsCur->mat.feat[2]);
-    }
-    /*for (int f = 0; f < FEAT_NUM; ++f)
-    {
-        featEven[f] = featSum[f] / pointNum;
-
-        featElemType featDistSquareSum = 0.0;
-        for (p_pointsCur = p_points; p_pointsCur != p_pointsEnd; ++p_pointsCur)
-        {
-            featDistSquareSum += pow((p_pointsCur->mat.feat[f] - featEven[f]), 2);
-        }
-
-        featDeta[f] = featDistSquareSum / (pointNum - 1);
-    }
-
-    // normalize the points feat
-    curPointSeq = 1;
-    for (p_pointsCur = p_points; p_pointsCur != p_pointsEnd; ++p_pointsCur, ++curPointSeq)
-    {
+        DEBUG_PRINT_SIMPLIFIED("Point%4d: (%4d, %4d), Feat: (", curPointSeq, p_pointsCur->c.x, p_pointsCur->c.y);
         for (int f = 0; f < FEAT_NUM; ++f)
         {
-            p_pointsCur->mat.feat[f] = (p_pointsCur->mat.feat[f] - featEven[f]) / featDeta[f];
+            DEBUG_PRINT_SIMPLIFIED("%lf ", p_pointsCur->mat.feat[f]);
         }
+        DEBUG_PRINT_SIMPLIFIED(")\n");
+    }
 
-        DEBUG_PRINT_SIMPLIFIED("Point%4d: (%4d, %4d), Feat: (%lf, %lf, %lf)\n", curPointSeq, p_pointsCur->c.x,
-        p_pointsCur->c.y, p_pointsCur->mat.feat[0], p_pointsCur->mat.feat[1], p_pointsCur->mat.feat[2]);
-    }*/
-
-    free(p_coord);
-    p_coord = NULL;
+    free(p_coordHuMat);
+    free(p_coordNeigh);
+    p_coordHuMat = NULL;
 }
 
 // locate the interest points through the det(Hessin) image pyramid
 // returns the pointer to the head of the array of interest points
-interestPoint *getInterestPoints(unsigned int* p_pointNum, const unsigned char *p_img, const double* p_detHesImgPyr,
+InterestPoint *getInterestPoints(unsigned int* p_pointNum, const unsigned char *p_img,
+                                 const double* p_detHesImgPyr, MaxDetHesOctave maxVal,
                                  unsigned short octNum, unsigned short layNum, unsigned short w, unsigned short h)
 {
     if (p_pointNum == NULL || p_img == NULL || p_detHesImgPyr == NULL)
@@ -621,20 +853,30 @@ interestPoint *getInterestPoints(unsigned int* p_pointNum, const unsigned char *
         exit(-1);
     }
 
-    interestPoint* p_points = (interestPoint*)calloc_check(w * h, sizeof(interestPoint));
+    InterestPoint* p_points = (InterestPoint*)calloc_check(w * h, sizeof(InterestPoint));
+    unsigned char* p_markImg = (unsigned char*)calloc_check(w * h, sizeof(unsigned char));
 
     // step 1: get the interest points
-    *p_pointNum = getPointsLocations(p_points, p_detHesImgPyr, octNum, layNum, w, h);
+    PointNum num;
+    num = getPointsLocations(p_points, p_markImg, p_detHesImgPyr, maxVal, octNum, layNum, w, h);
+    *p_pointNum = num.calcNum;
 
     // step 2: calculate the feature of the interest points
-    getPointsFeats(p_points, *p_pointNum, p_img, w, 6);
+    clock_t start = clock();
+    //getPointsFeats(p_points, p_markImg, num.calcNum, p_img, w, sqrt(((double)(w * h)) / (num.realNum)));
+    getPointsFeats(p_points, p_markImg, num.calcNum, p_img, w, 15);
+    clock_t end1 = clock();
+    printf("feat time consume: %ld\n", (end1 - start));
+
+    // free memory
+    free(p_markImg);
 
     return p_points;
 }
 
 // calculate the mahala distance of two feature
 // returns the feature distance
-double calcFeatDistance(const interestPoint *p_pointL, const interestPoint *p_pointR)
+double calcFeatDistance(const InterestPoint *p_pointL, const InterestPoint *p_pointR)
 {
     if (p_pointL == NULL || p_pointR == NULL)
     {
@@ -644,18 +886,32 @@ double calcFeatDistance(const interestPoint *p_pointL, const interestPoint *p_po
 
     double dist = 0.0;
     double tempDist = 0.0;
+
     for (int f = 0; f < FEAT_NUM; ++f)
     {
         tempDist = p_pointL->mat.feat[f] - p_pointR->mat.feat[f];
+
         dist += tempDist * tempDist;
     }
+
+//    cv::Mat_<double> matL(FEAT_NUM, 1);
+//    for (int f = 0; f < FEAT_NUM; ++f)
+//    {
+//        matL.at<double>(f, 1) = p_pointL->mat.feat[f];
+//    }
+
+//    cv::Mat_<double> matR(FEAT_NUM, 1);
+//    for (int f = 0; f < FEAT_NUM; ++f)
+//    {
+//        matR.at<double>(f, 1) = p_pointR->mat.feat[f];
+//    }
 
     return dist;
 }
 
 
 // get the most similar(nearest) point of current point
-const interestPoint* getNearestPoint(const interestPoint *p_pointCur, const interestPoint *p_pointsRef, unsigned int pointNumRef)
+const InterestPoint* getNearestPoint(const InterestPoint *p_pointCur, const InterestPoint *p_pointsRef, unsigned int pointNumRef)
 {
     if (p_pointsRef == NULL)
     {
@@ -669,8 +925,8 @@ const interestPoint* getNearestPoint(const interestPoint *p_pointCur, const inte
         exit(-1);
     }
 
-    const interestPoint* p_pointsRefNearest = NULL;
-    const interestPoint* p_pointsRefEnd = p_pointsRef + pointNumRef;
+    const InterestPoint* p_pointsRefNearest = NULL;
+    const InterestPoint* p_pointsRefEnd = p_pointsRef + pointNumRef;
     double minDist = 10000.0;
 
     for (; p_pointsRef != p_pointsRefEnd; ++p_pointsRef)
@@ -686,9 +942,99 @@ const interestPoint* getNearestPoint(const interestPoint *p_pointCur, const inte
     return p_pointsRefNearest;
 }
 
+// normalize all the feats
+void normalizePointsFeats(InterestPoint* p_pointsL, unsigned int pointNumL, InterestPoint* p_pointsR, unsigned int pointNumR)
+{
+    // get the max and min value of different channel of feats
+    featElemType* p_featMax = (featElemType*)calloc_check(FEAT_NUM, sizeof(featElemType));
+    featElemType* p_featMin = (featElemType*)calloc_check(FEAT_NUM, sizeof(featElemType));
+    featElemType* p_featGap = (featElemType*)calloc_check(FEAT_NUM, sizeof(featElemType));
+
+    featElemType* p_featMaxCur = p_featMax;
+    featElemType* p_featMinCur = p_featMin;
+    const featElemType* p_featMinEnd = p_featMin + FEAT_NUM;
+    for (; p_featMinCur != p_featMinEnd; ++p_featMaxCur, ++p_featMinCur)
+    {
+        *p_featMaxCur = FEAT_MIN;
+        *p_featMinCur = FEAT_MAX;
+    }
+
+    InterestPoint* p_pointsLCur = p_pointsL;
+    const InterestPoint* p_pointsLEnd = p_pointsL + pointNumL;
+    InterestPoint* p_pointsRCur = p_pointsR;
+    const InterestPoint* p_pointsREnd = p_pointsR + pointNumR;
+
+    // get the max and min value of different channel of feats
+    unsigned int f = 0;
+    p_featMaxCur = p_featMax;
+    p_featMinCur = p_featMin;
+    featElemType* p_featGapCur = p_featGap;
+    for (; p_featMinCur != p_featMinEnd; ++p_featMaxCur, ++p_featMinCur, ++p_featGapCur, ++f)
+    {
+        for (p_pointsLCur = p_pointsL; p_pointsLCur != p_pointsLEnd; ++p_pointsLCur)
+        {
+            featElemType val = p_pointsLCur->mat.feat[f];
+
+            if (*p_featMaxCur < val)
+                *p_featMaxCur = val;
+            if (*p_featMinCur > val)
+                *p_featMinCur = val;
+        }
+
+        for (p_pointsRCur = p_pointsR; p_pointsRCur != p_pointsREnd; ++p_pointsRCur)
+        {
+            featElemType val = p_pointsRCur->mat.feat[f];
+
+            if (*p_featMaxCur < val)
+                *p_featMaxCur = val;
+            if (*p_featMinCur > val)
+                *p_featMinCur = val;
+        }
+
+        *p_featGapCur = *p_featMaxCur - *p_featMinCur;
+    }
+
+    // normalize the feats
+    unsigned int curPointSeq = 1;
+    for (curPointSeq = 1, p_pointsLCur = p_pointsL; p_pointsLCur != p_pointsLEnd; ++p_pointsLCur, ++curPointSeq)
+    {
+        p_featMinCur = p_featMin;
+        p_featGapCur = p_featGap;
+        for (f = 0; p_featMinCur != p_featMinEnd; ++p_featMinCur, ++p_featGapCur, ++f)
+        {
+            p_pointsLCur->mat.feat[f] = (p_pointsLCur->mat.feat[f] - *p_featMinCur) / (*p_featGapCur);
+        }
+
+        DEBUG_PRINT_SIMPLIFIED("L Point%4d: (%4d, %4d), Feat: (", curPointSeq, p_pointsLCur->c.x, p_pointsLCur->c.y);
+        for (int f = 0; f < FEAT_NUM; ++f)
+        {
+            DEBUG_PRINT_SIMPLIFIED("%lf ", p_pointsLCur->mat.feat[f]);
+        }
+        DEBUG_PRINT_SIMPLIFIED(")\n");
+    }
+    for (curPointSeq = 1, p_pointsRCur = p_pointsR; p_pointsRCur != p_pointsREnd; ++p_pointsRCur, ++curPointSeq)
+    {
+        p_featMinCur = p_featMin;
+        p_featGapCur = p_featGap;
+        for (f = 0; p_featMinCur != p_featMinEnd; ++p_featMinCur, ++p_featGapCur, ++f)
+        {
+            p_pointsRCur->mat.feat[f] = (p_pointsRCur->mat.feat[f] - *p_featMinCur) / (*p_featGapCur);
+        }
+
+        DEBUG_PRINT_SIMPLIFIED("R Point%4d: (%4d, %4d), Feat: (", curPointSeq, p_pointsRCur->c.x, p_pointsRCur->c.y);
+        for (int f = 0; f < FEAT_NUM; ++f)
+        {
+            DEBUG_PRINT_SIMPLIFIED("%lf ", p_pointsRCur->mat.feat[f]);
+        }
+        DEBUG_PRINT_SIMPLIFIED(")\n");
+    }
+
+}
+
 // rough match based on mutual-minimum-distance
 // returns the matched pair number
-int roughMatch(const interestPoint* p_pointsL, int pointNumL, const interestPoint* p_pointsR, int pointNumR, pointPair* p_pairs)
+int roughMatch(const InterestPoint* p_pointsL, unsigned int pointNumL,
+               const InterestPoint* p_pointsR, unsigned int pointNumR, PointPair* p_pairs)
 {
     if (p_pointsL == NULL || p_pointsR == NULL || p_pairs == NULL)
     {
@@ -696,24 +1042,24 @@ int roughMatch(const interestPoint* p_pointsL, int pointNumL, const interestPoin
         exit(-1);
     }
 
-    pointPair* p_pairsCur = p_pairs;
+    PointPair* p_pairsCur = p_pairs;
 
-    const interestPoint* p_pointsLCur = p_pointsL;
-    const interestPoint* p_pointsLStart = p_pointsL;
-    const interestPoint* p_pointsLEnd = p_pointsL + pointNumL;
+    const InterestPoint* p_pointsLCur = p_pointsL;
+    const InterestPoint* p_pointsLStart = p_pointsL;
+    const InterestPoint* p_pointsLEnd = p_pointsL + pointNumL;
 
-    const interestPoint* p_pointsRStart = p_pointsR;
+    const InterestPoint* p_pointsRStart = p_pointsR;
 
     for (; p_pointsLCur != p_pointsLEnd; ++p_pointsLCur)
     {
-        const interestPoint* p_matchedR = getNearestPoint(p_pointsLCur, p_pointsRStart, pointNumR);
+        const InterestPoint* p_matchedR = getNearestPoint(p_pointsLCur, p_pointsRStart, pointNumR);
         if (p_matchedR == NULL)
         {
             DEBUG_PRINT_DETAILED("Left image Point %ld has no nearest Right image point", p_pointsLCur - p_pointsLStart + 1);
         }
         else
         {
-            const interestPoint* p_matchedL = getNearestPoint(p_matchedR, p_pointsLStart, pointNumL);
+            const InterestPoint* p_matchedL = getNearestPoint(p_matchedR, p_pointsLStart, pointNumL);
             if (p_matchedL == NULL)
             {
                 DEBUG_PRINT_DETAILED("Right image Point %ld has no nearest Left image point", p_matchedR - p_pointsRStart + 1);
@@ -735,7 +1081,8 @@ int roughMatch(const interestPoint* p_pointsL, int pointNumL, const interestPoin
 
 
 // using ransac to get the best projection matrix based on the coarse matching pairs
-projectMat getProjMatByRansac(const pointPair *p_pairs, unsigned int pairNum)
+ProjectMat getProjMatByRansac(const PointPair *p_pairs, unsigned int pairNum,
+                              unsigned short wL, unsigned short hL, unsigned short wR, unsigned short hR)
 {
     if (p_pairs == NULL)
     {
@@ -746,7 +1093,8 @@ projectMat getProjMatByRansac(const pointPair *p_pairs, unsigned int pairNum)
     // threshold for distance between expectedly matched point position and actually matched point position
     // > distThresh -- inner point
     // < distThresh -- outer point
-    double distThresh = 250;
+    double distThresh = min((double)(wL * hL), double(wR * hR)) / (double)(pairNum);
+    //double distThresh = 50 * 50;
 
     // threshold for ending the iteration
     // > innerPointNumThresh -- correct enough projection matrix coefficiency has been found
@@ -754,9 +1102,9 @@ projectMat getProjMatByRansac(const pointPair *p_pairs, unsigned int pairNum)
     unsigned int maxInnerPointNum = 0;
 
     // projection matrix coefficiency
-    projectMat curMat, suitMat, curMat2;
+    ProjectMat curMat, suitMat;
 
-    unsigned int iterateNum = 2000*pairNum;
+    unsigned int iterateNum = 100 * pairNum;
     cv::Point2f srcTri[3];
     cv::Point2f dstTri[3];
     cv::Mat mat(2, 3, CV_32FC1);
@@ -766,9 +1114,9 @@ projectMat getProjMatByRansac(const pointPair *p_pairs, unsigned int pairNum)
         unsigned int start1 = rand() % pairNum;
         unsigned int start2 = rand() % pairNum;
         unsigned int start3 = rand() % pairNum;
-        const pointPair* p_pair1 = p_pairs + start1;
-        const pointPair* p_pair2 = p_pairs + start2;
-        const pointPair* p_pair3 = p_pairs + start3;
+        const PointPair* p_pair1 = p_pairs + start1;
+        const PointPair* p_pair2 = p_pairs + start2;
+        const PointPair* p_pair3 = p_pairs + start3;
 
         srcTri[0] = cv::Point2f(p_pair1->pL.x, p_pair1->pL.y);
         srcTri[1] = cv::Point2f(p_pair2->pL.x, p_pair2->pL.y);
@@ -787,8 +1135,8 @@ projectMat getProjMatByRansac(const pointPair *p_pairs, unsigned int pairNum)
         curMat.m6 = mat.at<double>(1, 2);
 
         // calculate the inner point number under current coefficients
-        const pointPair* p_pairCur = p_pairs;
-        const pointPair* p_pairEnd = p_pairs + pairNum;
+        const PointPair* p_pairCur = p_pairs;
+        const PointPair* p_pairEnd = p_pairs + pairNum;
         unsigned int innerPointNum = 0;
 
         for (; p_pairCur != p_pairEnd; ++p_pairCur)
@@ -815,8 +1163,9 @@ projectMat getProjMatByRansac(const pointPair *p_pairs, unsigned int pairNum)
 
 // match the interest points of two images
 // returns the matched pairs of interest points
-pointPair *matchInterestPoints(const interestPoint *p_pointsL, int pointNumL,
-                               const interestPoint *p_pointsR, int pointNumR, unsigned int* p_pairNum)
+PointPair *matchInterestPoints(InterestPoint *p_pointsL, int pointNumL,
+                               InterestPoint *p_pointsR, int pointNumR, unsigned int* p_pairNum,
+                               unsigned short wL, unsigned short hL, unsigned short wR, unsigned short hR)
 {
     if (p_pointsL == NULL || p_pointsR == NULL || p_pairNum == NULL)
     {
@@ -824,17 +1173,20 @@ pointPair *matchInterestPoints(const interestPoint *p_pointsL, int pointNumL,
         exit(-1);
     }
 
-    pointPair* p_pairs = (pointPair*)calloc_check(max(pointNumL, pointNumR), sizeof(pointPair));
+    PointPair* p_pairs = (PointPair*)calloc_check(max(pointNumL, pointNumR), sizeof(PointPair));
+
+    // step 0: normalize all these feats
+    normalizePointsFeats(p_pointsL, pointNumL, p_pointsR, pointNumR);
 
     // step 1: rough match based on mutual-minimum-distance
     *p_pairNum = roughMatch(p_pointsL, pointNumL, p_pointsR, pointNumR, p_pairs);
 
-    // step 2: get the projection match based on ransac
-    projectMat mat = getProjMatByRansac(p_pairs, *p_pairNum);
+//    // step 2: get the projection match based on ransac
+    ProjectMat mat = getProjMatByRansac(p_pairs, *p_pairNum, wL, hL, wR, hR);
 
     // step 3: rectify the match based on ransac
-    pointPair* p_pairsEnd = p_pairs + *p_pairNum;
-    pointPair* p_pairsCur = p_pairs;
+    PointPair* p_pairsEnd = p_pairs + *p_pairNum;
+    PointPair* p_pairsCur = p_pairs;
     for (; p_pairsCur != p_pairsEnd; ++p_pairsCur)
     {
         p_pairsCur->pR.x = p_pairsCur->pL.x * mat.m1 + p_pairsCur->pL.y * mat.m2 + mat.m3;
@@ -845,7 +1197,7 @@ pointPair *matchInterestPoints(const interestPoint *p_pointsL, int pointNumL,
 }
 
 // draw the link of matched points of two images
-void showMatchResult(const cv::Mat& matL, const cv::Mat& matR, const pointPair* p_pairs, unsigned int pairNum)
+void showMatchResult(const cv::Mat& matL, const cv::Mat& matR, const PointPair* p_pairs, unsigned int pairNum, string testName)
 {
     if (p_pairs == NULL)
     {
@@ -854,20 +1206,31 @@ void showMatchResult(const cv::Mat& matL, const cv::Mat& matR, const pointPair* 
     }
 
     // merge the input images into one image
-    cv::Mat_<unsigned char> matArr[2] = {matL, matR};
-    cv::Mat_<unsigned char> mergedMat = mergeMats(matArr, 2, horizontal);
+    cv::Mat_<cv::Vec3b> matArr[2] = {matL, matR};
+    cv::Mat_<cv::Vec3b> mergedMat = mergeMats(matArr, 2, horizontal);
 
     unsigned short wL = matL.cols;
 
     // draw the lines
-    const pointPair* p_pairsEnd = p_pairs + pairNum;
-    for (; p_pairs != p_pairsEnd; ++p_pairs)
+    const PointPair* p_pairsEnd = p_pairs + (pairNum / 3) * 3;
+    const PointPair* p_pairsCur = p_pairs;
+    for (; p_pairsCur < p_pairsEnd; )
     {
-        cv::line(mergedMat, cv::Point(p_pairs->pL.x, p_pairs->pL.y),
-                 cv::Point(p_pairs->pR.x + wL , p_pairs->pR.y), cv::Scalar(255, 0, 0));
+        cv::line(mergedMat, cv::Point(p_pairsCur->pL.x, p_pairsCur->pL.y),
+                 cv::Point(p_pairsCur->pR.x + wL , p_pairsCur->pR.y), cv::Scalar(255, 0, 0));
+        p_pairsCur++;
+
+        cv::line(mergedMat, cv::Point(p_pairsCur->pL.x, p_pairsCur->pL.y),
+                 cv::Point(p_pairsCur->pR.x + wL , p_pairsCur->pR.y), cv::Scalar(0, 255, 0));
+        p_pairsCur++;
+
+        cv::line(mergedMat, cv::Point(p_pairsCur->pL.x, p_pairsCur->pL.y),
+                 cv::Point(p_pairsCur->pR.x + wL , p_pairsCur->pR.y), cv::Scalar(0, 0, 255));
+        p_pairsCur++;
     }
 
     cv::imshow("merged initial images", mergedMat);
+    //cv::imwrite(testName + string(".png"), mergedMat);
 }
 
 
