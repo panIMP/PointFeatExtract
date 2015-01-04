@@ -5,6 +5,9 @@
 #include <opencv2/imgproc/imgproc.hpp>
 #include <opencv2/highgui/highgui.hpp>
 #include <iostream>
+#include "debugMarco.h"
+
+#pragma warning(disable:4996)
 
 using namespace std;
 
@@ -51,6 +54,50 @@ int printImageVal(const char *fileName, const unsigned char *p_img, unsigned sho
 
     fclose(fp);
     return 0;
+}
+
+// print image pixel values into a txt file
+int printImageVal(const char *fileName, const unsigned int *p_img, unsigned short w, unsigned short h, unsigned short dim)
+{
+	if (fileName == NULL || p_img == NULL)
+	{
+		DEBUG_PRINT_DETAILED("null input of file name");
+		return -1;
+	}
+
+	FILE* fp;
+	if ((fp = fopen(fileName, "w")) == NULL)
+	{
+		DEBUG_PRINT_DETAILED("file open failed in printImageVal\n");
+		return -1;
+	}
+
+	if (dim == 1)
+	{
+		for (unsigned short j = 0; j < h; ++j)
+		{
+			for (unsigned short i = 0; i < w; ++i, ++p_img)
+			{
+				fprintf(fp, "%-4ld", *p_img);
+			}
+			fprintf(fp, "\n");
+		}
+	}
+	else if (dim > 1)
+	{
+		for (unsigned short j = 0; j < h; ++j)
+		{
+			for (unsigned short i = 0; i < w; ++i)
+			{
+				fprintf(fp, "(%4ld,%4ld,%4ld)", *p_img, *(p_img + 1), *(p_img + 1));
+				p_img += 3;
+			}
+			fprintf(fp, "\n");
+		}
+	}
+
+	fclose(fp);
+	return 0;
 }
 
 // get size info a sequence of images
@@ -124,40 +171,41 @@ cv::Mat mergeMats(const cv::Mat *p_matArr, unsigned short matNum, Orientation or
 // create integral image of one image
 unsigned int *createIntegImg(const unsigned char *p_img, unsigned short w, unsigned short h)
 {
-    if (p_img == NULL)
-    {
-        DEBUG_PRINT_DETAILED("null input of image data pointer");
-        exit(-1);
-    }
+	if (p_img == NULL)
+	{
+		DEBUG_PRINT_DETAILED("null input of image data pointer");
+		exit(-1);
+	}
 
-    unsigned int* p_integImg = (unsigned int*)calloc_check(w * h, sizeof(unsigned int));
+	unsigned int* p_integImg = (unsigned int*)calloc_check(w * h, sizeof(unsigned int));
 
-    p_integImg[0] = p_img[0];
+	p_integImg[0] = p_img[0];
 
-    for (unsigned short i = 1; i < w; ++i)
-    {
-        p_integImg[i] = p_integImg[i-1] + p_img[i];
-    }
+	for (unsigned short i = 1; i < w; ++i)
+	{
+		p_integImg[i] = p_integImg[i - 1] + p_img[i];
+	}
 
-    for (unsigned short j = 1; j < h; ++j)
-    {
-        unsigned int sum = 0;
-        unsigned int curRow = j * w;
-        for (unsigned short i = 0; i < w; ++i)
-        {
-            sum += p_img[curRow + i];
-            p_integImg[curRow + i] = p_integImg[curRow - w + i] + sum;
-        }
-    }
+	for (unsigned short j = 1; j < h; ++j)
+	{
+		unsigned int sum = 0;
+		unsigned int curRow = j * w;
+		for (unsigned short i = 0; i < w; ++i)
+		{
+			sum += p_img[curRow + i];
+			p_integImg[curRow + i] = p_integImg[curRow - w + i] + sum;
+		}
+	}
 
-    return p_integImg;
+	return p_integImg;
 }
 
 // rotate the image by different angles and scales
-void rotateImg(cv::Mat& src, cv::Mat& dst, double angle, double scale)
+void rotateImg(cv::Mat& src, cv::Mat& dst, double angle)
 {
-    int h = src.rows * scale;
-    int w = src.cols * scale;
+	// method1  pure axis rotate
+	int h = src.rows;
+    int w = src.cols;
     int digonal = sqrt(w * w + h * h);
     int dh = (digonal - h) / 2;
     int dw = (digonal - w) / 2;
@@ -166,25 +214,84 @@ void rotateImg(cv::Mat& src, cv::Mat& dst, double angle, double scale)
 
     cv::Point2f center((((double)dst.cols) / 2.0), (((double)dst.rows) / 2.0));
 
-    cv::Mat rotateMat = cv::getRotationMatrix2D(center, angle, scale);
+	cv::Mat rotateMat = cv::getRotationMatrix2D(center, angle, 1);
 
-    cv::warpAffine(dst, dst, rotateMat, dst.size());
+	cout << rotateMat << endl;
 
-    double radian = (double)(((double)angle) / 180.0 * CV_PI);
-    double sinVal = fabs(sin(radian));
-    double cosVal = fabs(cos(radian));
+	cv::warpAffine(dst, dst, rotateMat, dst.size());
 
-    cv::Size targetSize((int)(w * cosVal + h * sinVal),(int)(w * sinVal + h * cosVal));
+	double radian = (double)(((double)angle) / 180.0 * CV_PI);
+	double sinVal = fabs(sin(radian));
+	double cosVal = fabs(cos(radian));
 
-    int x = (dst.cols - targetSize.width) / 2;
-    int y = (dst.rows - targetSize.height) / 2;
-
-    cv::Rect rect(x, y, targetSize.width, targetSize.height);
-
-    dst = cv::Mat(dst, rect);
-
-//    cv::imwrite("dst.png", dst);
-//    dst = cv::imread("dst.png", cv::IMREAD_GRAYSCALE);
+	cv::Size targetSize((int)(w * cosVal + h * sinVal),(int)(w * sinVal + h * cosVal));
+	int x = (dst.cols - targetSize.width) / 2;
+	int y = (dst.rows - targetSize.height) / 2;
+	cv::Rect rect(x, y, targetSize.width, targetSize.height);
+	dst = cv::Mat(dst, rect);
 }
 
 
+cv::Mat affineImg(cv::Mat& src, double angle)
+{
+	int h = src.rows;
+	int w = src.cols;
+	double radian = (double)(((double)angle) / 180.0 * CV_PI);
+	int hd = h;
+	int wd = w * cos(radian);
+
+	cv::Point2f srcTri[3];
+	cv::Point2f dstTri[3];
+
+	srcTri[0] = cv::Point2f(0, 0);
+	srcTri[1] = cv::Point2f(src.cols - 1, 0);
+	srcTri[2] = cv::Point2f(0, src.rows - 1);
+
+	dstTri[0] = cv::Point2f((w - wd) / 2, 0);
+	dstTri[1] = cv::Point2f((w + wd) / 2 - 1, 0);
+	dstTri[2] = cv::Point2f((w - wd) / 2, src.rows - 1);
+
+	cv::Mat dst = cv::Mat(h, w, CV_8UC3);
+
+	cv::Mat wrapMat = cv::getAffineTransform(srcTri, dstTri);
+	cout << wrapMat << endl;
+
+	cv::warpAffine(src, dst, wrapMat, dst.size());
+
+	cv::Rect rect((w - wd) / 2, 0, wd, hd);
+	dst = cv::Mat(dst, rect);
+
+	return dst;
+}
+
+
+// move image
+cv::Mat moveImg(cv::Mat& src, double dx, double dy)
+{
+	int h = src.rows;
+	int w = src.cols;
+	int hd = h - dy;
+	int wd = w - dx;
+
+	cv::Mat dst = cv::Mat(hd, wd, CV_8UC3);
+	cv::Rect rect(dx, dy, wd, hd);
+	dst = cv::Mat(src, rect);
+
+	return dst;
+}
+
+
+// scale image
+cv::Mat scaleImg(cv::Mat& src, double scale)
+{
+	int h = src.rows;
+	int w = src.cols;
+	int hd = (double)(h * sqrt(scale));
+	int wd = (double)(w * sqrt(scale));
+
+	cv::Mat dst = cv::Mat(hd, wd, CV_8UC3);
+
+	cv::resize(src, dst, dst.size());
+
+	return dst;
+}

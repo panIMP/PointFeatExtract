@@ -9,16 +9,14 @@ void *malloc_check(size_t _Size);
 void *calloc_check(size_t _NumOfElements, size_t _SizeOfElements);
 
 
-#define DEBUG
-#undef DEBUG
 
-#ifdef DEBUG
-#define DEBUG_PRINT_DETAILED(format, args...) printf("\n\nFile: " __FILE__ "\n" "Line: %d\nMsgs: " format, __LINE__, ##args)
-#define DEBUG_PRINT_SIMPLIFIED(format, args...) printf(format, ##args)
+#ifdef _DEBUG_INFO_
+#define DEBUG_PRINT_DETAILED(format, ...) printf("\n\nFile: " __FILE__ "\n" "Line: %d\nMsgs: " format, __LINE__, ##__VA_ARGS__)
+#define DEBUG_PRINT_SIMPLIFIED(format, ...) printf(format, ##__VA_ARGS__)
 
 #else
-#define DEBUG_PRINT_DETAILED(format, args...)
-#define DEBUG_PRINT_SIMPLIFIED(format, args...)
+#define DEBUG_PRINT_DETAILED(format, ...)
+#define DEBUG_PRINT_SIMPLIFIED(format, ...)
 
 #endif
 

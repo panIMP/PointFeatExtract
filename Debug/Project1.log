@@ -1,0 +1,7 @@
+﻿  main.cpp
+e:\yun\item\proj\vs\project1 - final_godsaveme\project1 - final\main.cpp(124): warning C4244: “初始化”: 从“double”转换到“unsigned short”，可能丢失数据
+  interestPointLocate.cpp
+e:\yun\item\proj\vs\project1 - final_godsaveme\project1 - final\interestpointlocate.cpp(845): warning C4244: “=”: 从“double”转换到“short”，可能丢失数据
+e:\yun\item\proj\vs\project1 - final_godsaveme\project1 - final\interestpointlocate.cpp(846): warning C4244: “=”: 从“double”转换到“short”，可能丢失数据
+  正在生成代码...
+  Project1.vcxproj -> E:\Yun\item\proj\vs\Project1 - Final_godSaveMe\Project1 - Final\Debug\Project1.exe

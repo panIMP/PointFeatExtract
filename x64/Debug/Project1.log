@@ -1,0 +1,3 @@
+﻿  main.cpp
+main.cpp(74): warning C4244: “初始化”: 从“double”转换到“unsigned short”，可能丢失数据
+  Project1.vcxproj -> E:\Yun\item\proj\vs\Project1 - Final\Project1 - Final\x64\Debug\Project1.exe
