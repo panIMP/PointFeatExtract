@@ -20,15 +20,15 @@ int main()
 {
 	// ============================================================================================================================
 	// left image
-	cv::Mat_<cv::Vec3b> matLColor = cv::imread(string("G:/xiangmu/Pictures/juanbidao/src/juanbidao1.bmp"), cv::IMREAD_COLOR);
+	//cv::Mat_<cv::Vec3b> matLColor = cv::imread(string("G:/xiangmu/Pictures/juanbidao/src/juanbidao1.bmp"), cv::IMREAD_COLOR);
 	//cv::Mat_<cv::Vec3b> matLColor = cv::imread(string("G:/xiangmu/Pictures/gongjian/1.bmp"), cv::IMREAD_COLOR);
-	//cv::Mat_<cv::Vec3b> matLColor = cv::imread(string("G:/xiangmu/Pictures/Dolls/Illum1/Exp1/view0.png"), cv::IMREAD_COLOR);
+	cv::Mat_<cv::Vec3b> matLColor = cv::imread(string("G:/xiangmu/Pictures/Dolls/Illum1/Exp1/view0.png"), cv::IMREAD_COLOR);
 	//cv::Mat_<cv::Vec3b> matLColor = cv::imread(string("G:/xiangmu/Pictures/grap/img1.ppm"), cv::IMREAD_COLOR);
 
 	// right image
-	cv::Mat_<cv::Vec3b> matRColor = cv::imread(string("G:/xiangmu/Pictures/juanbidao/yingdongxuanzhuan/juanbidao22.bmp"), cv::IMREAD_COLOR);
+	//cv::Mat_<cv::Vec3b> matRColor = cv::imread(string("G:/xiangmu/Pictures/juanbidao/yingdongxuanzhuan/juanbidao2.bmp"), cv::IMREAD_COLOR);
 	//cv::Mat_<cv::Vec3b> matRColor = cv::imread(string("G:/xiangmu/Pictures/gongjian/7.bmp"), cv::IMREAD_COLOR);
-	//cv::Mat_<cv::Vec3b> matRColor = cv::imread(string("G:/xiangmu/Pictures/Dolls/Illum1/Exp1/view0.png"), cv::IMREAD_COLOR);
+	cv::Mat_<cv::Vec3b> matRColor = cv::imread(string("G:/xiangmu/Pictures/Dolls/Illum1/Exp1/view6.png"), cv::IMREAD_COLOR);
 	//cv::Mat_<cv::Vec3b> matRColor = cv::imread(string("G:/xiangmu/Pictures/grap/img4.ppm"), cv::IMREAD_COLOR);
 
 	ProjectMat realMat;
@@ -38,9 +38,6 @@ int main()
 	realMat.m4 = 0;
 	realMat.m5 = 1;
 	realMat.m6 = 0;
-	cout << "realMat: " << endl;
-	cout << realMat.m1 << "\t" << realMat.m2 << "\t" << realMat.m3 << endl;
-	cout << realMat.m4 << "\t" << realMat.m5 << "\t" << realMat.m6 << endl;
 
 #ifdef _MODULATE_DATA_
 	double angle1 = 0.0;
@@ -118,7 +115,6 @@ int main()
 	drawRect(matLColor, p_pointsL, pointNumL, 15, 2, cv::Scalar(255, 255, 255));
 	drawRect(matRColor, p_pointsR, pointNumR, 15, 2, cv::Scalar(255, 255, 255));
 
-#ifndef _ONLY_LOCATION_
 	// ==============================================================================================================================
 	double dR = (double)(wR * hR) / (double)pointNumR;
 	unsigned short r = sqrt(dR);
@@ -153,110 +149,8 @@ int main()
 
 	free(p_pairs);
 
-#endif
-
-	getchar();
 	cv::waitKey();
 	return 0;
 }
 #endif
 
-
-#ifdef _DEBUG_OPENCV_
-int main()
-{
-	int i = 0;
-	unsigned long long totalTime1 = 0;
-	unsigned long long totalTime2 = 0;
-	// detecting keypoints
-	cv::SurfFeatureDetector detector;
-	vector<cv::KeyPoint> keypoints;
-	cv::SurfDescriptorExtractor extractor;
-	cv::Mat descriptors;
-	cv::Mat img;
-
-	for (int i = 1; i <= 27; ++i)
-	{
-		stringstream str;
-		str << i;
-
-		img = cv::imread(("G:/xiangmu/Pictures/gongjian/" + str.str() + ".bmp"), CV_LOAD_IMAGE_GRAYSCALE);
-
-		clock_t start1 = clock();
-		detector.detect(img, keypoints);
-		clock_t end1 = clock();
-		clock_t time1 = end1 - start1;
-		cout << "time1: " << time1;
-
-		clock_t start2 = clock();
-		extractor.compute(img, keypoints, descriptors);
-		clock_t end2 = clock();
-		clock_t time2 = end2 - start2;
-		cout << "time2: " << time2 << endl;
-
-		totalTime1 += time1;
-		totalTime2 += time2;
-	}
-
-	cout << "even time1: " << totalTime1 / 27 << endl;
-	cout << "even time2: " << totalTime2 / 27 << endl;
-	cv::waitKey();
-	getchar();
-
-	return 0;
-}
-#endif
-
-
-#ifdef _GET_IMG_VAL_
-int main()
-{
-	cv::Mat_<unsigned char> mat1 = cv::imread(string("G:/xiangmu/Pictures/gongjian/1.bmp"), cv::IMREAD_GRAYSCALE);
-	//cv::Mat_<unsigned char> mat1;
-	//cv::cvtColor(mat1Color, mat1, CV_BGR2GRAY);
-	cv::imshow("mat1Src", mat1);
-	gaussin(mat1.data, mat1.cols, mat1.rows);
-	
-	unsigned char thresh = otsu(mat1.data, mat1.cols, mat1.rows);
-	cv::Mat mat2(mat1.rows, mat1.cols, CV_8UC1);
-	mat1.copyTo(mat2);
-	cout << mat2.size() << endl;
-	binary(mat2.data, thresh, 255, mat1.cols, mat1.rows);
-	cv::imshow("mat1Binary", mat2);
-	cv::imwrite("mat1Binary.bmp", mat2);
-	cout << mat2.channels() << endl;
-	
-	cv::Mat mat3(mat1.rows, mat1.cols, CV_8UC1);
-	mat2.copyTo(mat3);
-	erode(mat2.data, mat3.data, mat3.cols, mat3.rows);
-	cv::imshow("mat1Erode", mat3);
-
-	subtract(mat2.data, mat3.data, mat1.cols, mat1.rows);
-	cv::imshow("mat1Edge", mat2);
-
-	cv::waitKey();
-	//printImageVal("I1E0V0.txt", mat1.data, mat1.cols, mat1.rows, 1);
-	//cv::imwrite("G:/xiangmu/Pictures/juanbidao/yingdongxuanzhuan/juanbidaoBinaryEqu.bmp", mat1);
-
-	/*cv::Mat_<cv::Vec3b> mat2Color = cv::imread(string("G:/xiangmu/Pictures/Dolls/Illum1/Exp1/view0.png"), cv::IMREAD_COLOR);
-	cv::Mat_<unsigned char> mat2;
-	cv::cvtColor(mat2Color, mat2, CV_BGR2GRAY);
-	cv::equalizeHist(mat2, mat2);
-	printImageVal("I1E1V0.txt", mat2.data, mat2.cols, mat2.rows, 1);
-	cv::imwrite("G:/xiangmu/Pictures/Dolls/Illum1/Exp1/view0Equalize.png", mat2);
-
-	cv::Mat_<cv::Vec3b> mat3Color = cv::imread(string("G:/xiangmu/Pictures/Dolls/Illum1/Exp2/view0.png"), cv::IMREAD_COLOR);
-	cv::Mat_<unsigned char> mat3;
-	cv::cvtColor(mat3Color, mat3, CV_BGR2GRAY);
-	printImageVal("I1E2V0.txt", mat3.data, mat3.cols, mat3.rows, 1);
-	cv::imwrite("G:/xiangmu/Pictures/Dolls/Illum1/Exp2/view0Eqalize.png", mat3);
-
-	cv::Mat_<cv::Vec3b> mat4Color = cv::imread(string("G:/xiangmu/Pictures/Dolls/Illum2/Exp1/view0.png"), cv::IMREAD_COLOR);
-	cv::Mat_<unsigned char> mat4;
-	cv::cvtColor(mat4Color, mat4, CV_BGR2GRAY);
-	printImageVal("I2E1V0.txt", mat4.data, mat4.cols, mat4.rows, 1);
-	cv::imwrite("G:/xiangmu/Pictures/Dolls/Illum2/Exp1/view0Equalize.png", mat4);*/
-
-	return 0;
-}
-#endif

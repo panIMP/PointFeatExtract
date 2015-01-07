@@ -28,27 +28,13 @@ using namespace std;
 // ...
 // correspording deata value of the simulated box filter of second order derivative of guassin.
 // end ===============================
-const Filter g_filts[LAYER_NUM]=
+const Filter g_filts[LAYER_NUM] =
 {
-	// 0st layer -- box size: 9 * 9
-	{
-		3, 0, 2,  2,  6, 15, 1,  3,  2, 5,   6, 15, -2,  6,  2,  8,  6, 15,  1,  0,  0,  0,  0,  0, 0,
-		3, 2, 0,  6,  2, 15, 1,  2,  3, 6,   5, 15, -2,  2,  6,  6,  8, 15,  1,  0,  0,  0,  0,  0, 0,
-		4, 1, 1,  3,  3,  9, 1,  5,  1, 7,   3,  9, -1,  1,  5,  3,  7,  9, -1,  5,  5,  7,  7,  9, 1,
-	},
-
 	// 1st layer -- box size: 15 * 15
 	{
 		3, 0, 3,  4, 11, 45, 1,  5,  3,  9, 11, 45, -2, 10,  3, 14, 11, 45,  1,  0,  0,  0,  0,  0, 0,
 		3, 3, 0, 11,  4, 45, 1,  3,  5, 11,  9, 45, -2,  3, 10, 11, 14, 45,  1,  0,  0,  0,  0,  0, 0,
 		4, 2, 2,  6,  6, 25, 1,  8,  2, 12,  6, 25, -1,  2,  8,  6, 12, 25, -1,  8,  8, 12, 12, 25, 1,
-	},
-
-	// 2nd layer -- box size: 21 * 21
-	{
-		3, 0, 4,  6, 16, 91, 1,  7,  4, 13, 16, 91, -2, 14,  4, 20, 16, 91,  1,  0,  0,  0,  0,  0, 0,
-		3, 4, 0, 16,  6, 91, 1,  4,  7, 16, 13, 91, -2,  4, 14, 16, 20, 91,  1,  0,  0,  0,  0,  0, 0,
-		4, 3, 3,  9,  9, 49, 1, 11,  3, 17,  9, 49, -1,  3, 11,  9, 17, 49, -1, 11, 11, 17, 17, 49, 1,
 	},
 
 	// 3rd layer -- box size: 27 * 27
@@ -58,33 +44,12 @@ const Filter g_filts[LAYER_NUM]=
 		4, 4, 4, 12, 12, 81, 1, 14, 4, 22, 12, 81, -1, 4, 14, 12, 22, 81, -1, 14, 14, 22, 22, 81, 1,
 	},
 
-	// 4th layer -- box size: 39 * 39
-	{
-		3, 0, 7, 12, 31, 325, 1, 13, 7, 25, 31, 325, -2, 26, 7, 38, 31, 325, 1, 0, 0, 0, 0, 0, 0,
-		3, 7, 0, 31, 12, 325, 1, 7, 13, 31, 25, 325, -2, 7, 26, 31, 38, 325, 1, 0, 0, 0, 0, 0, 0,
-		4, 6, 6, 18, 18, 169, 1, 20, 6, 32, 18, 169, -1, 6, 20, 18, 32, 169, -1, 20, 20, 32, 32, 169, 1,
-	},
-
 	// 5th layer -- box size: 51 * 51
 	{
 		3, 0, 9, 16, 41, 561, 1, 17, 9, 33, 41, 561, -2, 34, 9, 50, 41, 561, 1, 0, 0, 0, 0, 0, 0,
 		3, 9, 0, 41, 16, 561, 1, 9, 17, 41, 33, 561, -2, 9, 34, 41, 50, 561, 1, 0, 0, 0, 0, 0, 0,
 		4, 8, 8, 24, 24, 289, 1, 26, 8, 42, 24, 289, -1, 8, 26, 24, 42, 289, -1, 26, 26, 42, 42, 289, 1,
 	},
-
-	// 6th layer -- box size: 75 * 75
-	{
-		3, 0, 13, 24, 61, 1225, 1, 25, 13, 49, 61, 1225, -2, 50, 13, 74, 61, 1225, 1, 0, 0, 0, 0, 0, 0,
-		3, 13, 0, 61, 24, 1225, 1, 13, 25, 61, 49, 1225, -2, 13, 50, 61, 74, 1225, 1, 0, 0, 0, 0, 0, 0,
-		4, 12, 12, 36, 36, 625, 1, 38, 12, 62, 36, 625, -1, 12, 38, 36, 62, 625, -1, 38, 38, 62, 62, 625, 1,
-	},
-
-	// 7th player -- box size: 99 * 99
-	{
-		3, 0, 17, 32, 81, 2145, 1, 33, 17, 65, 81, 2145, -2, 66, 17, 98, 81, 2145, 1, 0, 0, 0, 0, 0, 0,
-		3, 17, 0, 81, 32, 2145, 1, 17, 33, 81, 65, 2145, -2, 17, 66, 81, 98, 2145, 1, 0, 0, 0, 0, 0, 0,
-		4, 16, 16, 48, 48, 1089, 1, 50, 16, 82, 48, 1089, -1, 16, 50, 48, 82, 1089, -1, 50, 50, 82, 82, 1089, 1,
-	}
 };
 
 const unsigned char g_upOffset[] = { 0, 1, 1, 1, 1, 1, 1, 0 };
@@ -814,6 +779,83 @@ ProjectMat getProjMatByRansac(const PointPair *p_pairs, unsigned int pairNum, do
 	return suitMat;
 }
 
+// using ransac to get the best projection matrix based on the coarse matching pairs
+ProjectMat getProjMatByRansac2(const PointPair *p_pairs, unsigned int pairNum, double distThresh, unsigned short wL, unsigned short hL, unsigned short wR, unsigned short hR)
+{
+	if (p_pairs == NULL)
+	{
+		DEBUG_PRINT_DETAILED("null input of pointers");
+		exit(-1);
+	}
+
+	// threshold for ending the iteration
+	// > innerPointNumThresh -- correct enough projection matrix coefficiency has been found
+	// < innerPointNumThresh -- not yet
+	unsigned int maxInnerPointNum = 0;
+
+	// projection matrix coefficiency
+	ProjectMat curMat, suitMat;
+
+	unsigned int iterateNum = 10 * pairNum;
+	cv::Point2f srcTri[3];
+	cv::Point2f dstTri[3];
+	cv::Mat mat(2, 3, CV_32FC1);
+
+	for (unsigned int i = 0; i < iterateNum; ++i)
+	{
+		unsigned int start1 = rand() % pairNum;
+		unsigned int start2 = rand() % pairNum;
+		unsigned int start3 = rand() % pairNum;
+		const PointPair* p_pair1 = p_pairs + start1;
+		const PointPair* p_pair2 = p_pairs + start2;
+		const PointPair* p_pair3 = p_pairs + start3;
+
+		srcTri[0] = cv::Point2f(p_pair1->pL.x, p_pair1->pL.y);
+		srcTri[1] = cv::Point2f(p_pair2->pL.x, p_pair2->pL.y);
+		srcTri[2] = cv::Point2f(p_pair3->pL.x, p_pair3->pL.y);
+
+		dstTri[0] = cv::Point2f(p_pair1->pR.x, p_pair1->pR.y);
+		dstTri[1] = cv::Point2f(p_pair2->pR.x, p_pair2->pR.y);
+		dstTri[2] = cv::Point2f(p_pair3->pR.x, p_pair3->pR.y);
+
+		mat = cv::getAffineTransform(srcTri, dstTri);
+		curMat.m1 = mat.at<double>(0, 0);
+		curMat.m2 = mat.at<double>(0, 1);
+		curMat.m3 = mat.at<double>(0, 2);
+		curMat.m4 = mat.at<double>(1, 0);
+		curMat.m5 = mat.at<double>(1, 1);
+		curMat.m6 = mat.at<double>(1, 2);
+
+		// calculate the inner point number under current coefficients
+		const PointPair* p_pairCur = p_pairs;
+		const PointPair* p_pairEnd = p_pairs + pairNum;
+		unsigned int innerPointNum = 0;
+
+		for (; p_pairCur != p_pairEnd; ++p_pairCur)
+		{
+			double expectedRx = curMat.m1 * (double)p_pairCur->pL.x + curMat.m2 * (double)p_pairCur->pL.y + curMat.m3;
+			double expectedRy = curMat.m4 * (double)p_pairCur->pL.x + curMat.m5 * (double)p_pairCur->pL.y + curMat.m6;
+			double dist = pow((expectedRx - p_pairCur->pR.x), 2) + pow((expectedRy - p_pairCur->pR.y), 2);
+			if (dist < distThresh)
+			{
+				++innerPointNum;
+			}
+		}
+
+		// only record the coefficients that generates maximum inner point num
+		if (innerPointNum > maxInnerPointNum)
+		{
+			maxInnerPointNum = innerPointNum;
+			suitMat = curMat;
+		}
+	}
+
+	//cout << "maxInnerPointNum: " << maxInnerPointNum << endl;
+
+	return suitMat;
+}
+
+
 // match the interest points of two images
 // returns the matched pairs of interest points
 ProjectMat matchInterestPoints(InterestPoint *p_pointsL, int pointNumL, InterestPoint *p_pointsR, int pointNumR, PointPair* p_pairs, unsigned int* p_pairNum, double thresh, unsigned short wL, unsigned short hL, unsigned short wR, unsigned short hR)
@@ -867,27 +909,28 @@ void showMatchResult(const cv::Mat& matL, const cv::Mat& matR, const ProjectMat&
 	// draw the lines
 	const PointPair* p_pairsEnd = p_pairs + pairNum;
 	const PointPair* p_pairsCur = p_pairs;
-	for (; ; )
+	for (;;)
 	{
-		cv::line(mergedMat, cv::Point(p_pairsCur->pL.x, p_pairsCur->pL.y), cv::Point(p_pairsCur->pR.x + wL , p_pairsCur->pR.y), cv::Scalar(255, 255, 255), 2);
+		cv::line(mergedMat, cv::Point(p_pairsCur->pL.x, p_pairsCur->pL.y), cv::Point(p_pairsCur->pR.x + wL , p_pairsCur->pR.y), cv::Scalar(255, 255, 255), 1);
 
 		p_pairsCur+=step;
 		if (p_pairsCur >= p_pairsEnd)
 			break;
 
-		cv::line(mergedMat, cv::Point(p_pairsCur->pL.x, p_pairsCur->pL.y), cv::Point(p_pairsCur->pR.x + wL , p_pairsCur->pR.y), cv::Scalar(255, 255, 255), 2);
+		cv::line(mergedMat, cv::Point(p_pairsCur->pL.x, p_pairsCur->pL.y), cv::Point(p_pairsCur->pR.x + wL , p_pairsCur->pR.y), cv::Scalar(255, 255, 255), 1);
 		
 		p_pairsCur+=step;
 		if (p_pairsCur >= p_pairsEnd)
 			break;
 		
-		cv::line(mergedMat, cv::Point(p_pairsCur->pL.x, p_pairsCur->pL.y), cv::Point(p_pairsCur->pR.x + wL , p_pairsCur->pR.y), cv::Scalar(255, 255, 255), 2);
+		cv::line(mergedMat, cv::Point(p_pairsCur->pL.x, p_pairsCur->pL.y), cv::Point(p_pairsCur->pR.x + wL , p_pairsCur->pR.y), cv::Scalar(255, 255, 255), 1);
 
 		p_pairsCur+=step;
 		if (p_pairsCur >= p_pairsEnd)
 			break;
 	}
 
+#ifdef _MODULATE_DATA_
 	// show affine mat
 	InterestPoint* p_pointsLEnd = p_pointsL + pointNumL;
 	InterestPoint* p_pointsLCur = p_pointsL;
@@ -904,11 +947,15 @@ void showMatchResult(const cv::Mat& matL, const cv::Mat& matR, const ProjectMat&
 		if (dist <= dThresh)
 			matchedNum++;
 	}
+	cout << "realMat: " << endl;
+	cout << realMat.m1 << "\t" << realMat.m2 << "\t" << realMat.m3 << endl;
+	cout << realMat.m4 << "\t" << realMat.m5 << "\t" << realMat.m6 << endl;
 	cout << "suitMat: " << endl;
 	cout << suitMat.m1 << "\t" << suitMat.m2 << "\t" << suitMat.m3 << endl;
 	cout << suitMat.m4 << "\t" << suitMat.m5 << "\t" << suitMat.m6 << endl;
 	cout << "Matched pairs number: " << pairNum << endl;
-	cout << "matchedNum: " << matchedNum << "precision rate: " << (double)matchedNum / (double)pointNumL << endl;
+	cout << "matchedNum: " << matchedNum << "\n" << "precision rate: " << (double)matchedNum / (double)pointNumL << endl;
+#endif
 
 	cv::imshow("merged initial images", mergedMat);
 	cv::imwrite("G:/xiangmu/Pictures/juanbidao/result/" + string("joke") + string(".png"), mergedMat);

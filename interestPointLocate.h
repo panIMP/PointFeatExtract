@@ -11,7 +11,7 @@
 // number of filters(xx, yy, xy)
 #define MODE_NUM  3
 // number of layersS
-#define LAYER_NUM 8
+#define LAYER_NUM 3
 
 #define DETHES_MAX 1E100
 #define DETHES_MIN -1E100

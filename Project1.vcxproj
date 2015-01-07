@@ -116,6 +116,7 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClCompile Include="..\..\MTool\EquationSolve\EquationSolve.c" />
     <ClCompile Include="error.cpp" />
     <ClCompile Include="imgIO.cpp" />
     <ClCompile Include="imgMath.cpp" />
