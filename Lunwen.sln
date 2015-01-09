@@ -1,0 +1,34 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio 2013
+VisualStudioVersion = 12.0.21005.1
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "PointFeatExtract", "PointFeatExtract\PointFeatExtract.vcxproj", "{F49E5308-D0F5-409A-AA12-5F4D4EA26CC4}"
+EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "MTool", "..\MTool\MTool.vcxproj", "{51F95368-11B2-453C-BB73-7621F9EFEE39}"
+EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "DTool", "..\DTool\DTool.vcxproj", "{9A04D715-C385-4A4B-A3C4-97DC606CCA80}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Win32 = Debug|Win32
+		Release|Win32 = Release|Win32
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{F49E5308-D0F5-409A-AA12-5F4D4EA26CC4}.Debug|Win32.ActiveCfg = Debug|Win32
+		{F49E5308-D0F5-409A-AA12-5F4D4EA26CC4}.Debug|Win32.Build.0 = Debug|Win32
+		{F49E5308-D0F5-409A-AA12-5F4D4EA26CC4}.Release|Win32.ActiveCfg = Release|Win32
+		{F49E5308-D0F5-409A-AA12-5F4D4EA26CC4}.Release|Win32.Build.0 = Release|Win32
+		{51F95368-11B2-453C-BB73-7621F9EFEE39}.Debug|Win32.ActiveCfg = Debug|Win32
+		{51F95368-11B2-453C-BB73-7621F9EFEE39}.Debug|Win32.Build.0 = Debug|Win32
+		{51F95368-11B2-453C-BB73-7621F9EFEE39}.Release|Win32.ActiveCfg = Release|Win32
+		{51F95368-11B2-453C-BB73-7621F9EFEE39}.Release|Win32.Build.0 = Release|Win32
+		{9A04D715-C385-4A4B-A3C4-97DC606CCA80}.Debug|Win32.ActiveCfg = Debug|Win32
+		{9A04D715-C385-4A4B-A3C4-97DC606CCA80}.Debug|Win32.Build.0 = Debug|Win32
+		{9A04D715-C385-4A4B-A3C4-97DC606CCA80}.Release|Win32.ActiveCfg = Release|Win32
+		{9A04D715-C385-4A4B-A3C4-97DC606CCA80}.Release|Win32.Build.0 = Release|Win32
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+EndGlobal
