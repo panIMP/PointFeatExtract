@@ -212,51 +212,61 @@ unsigned int calcDiskTmplArray(coord* p_coord, unsigned short r)
 }
 
 
+
 unsigned char otsu(unsigned char* p_img, unsigned short w, unsigned short h)
 {
 	// get histogram
-	unsigned int hist[256] = {0};
-	unsigned int totalSize = w*h;
-	for (unsigned int i = 0; i < totalSize; ++i)
+	unsigned int hist[256] = { 0 };
+
+	unsigned int sum = w * h;
+	unsigned int sum0 = 0;
+	unsigned int sum1 = 0;
+
+	unsigned long long moment = 0;
+	unsigned long long moment0 = 0;
+	unsigned long long moment1 = 0;
+
+	double u0, u1, u;
+	double interClassInvar;
+	double maxInterClassInvar = 0;
+
+	unsigned char thresh, startVal, endVal;
+
+	for (unsigned int i = 0; i < sum; ++i)
 	{
 		hist[p_img[i]]++;
 	}
 
-	unsigned char startVal = 0;
+	startVal = 0;
 	while (hist[startVal] == 0)   startVal++;
 
-	unsigned char endVal = 255;
+	endVal = 255;
 	while (hist[endVal] == 0)   endVal--;
 
-	unsigned int sum = totalSize;
-	unsigned long long moment = 0;
+
 	for (unsigned short i = startVal; i <= endVal; i++)
 	{
 		moment += i * hist[i];
 	}
 
-	unsigned int w0 = 0;
-	unsigned int w1 = 0;
-	unsigned long long tmp = 0;
-	double u0, u1;
-	double u = (double)moment / (double)sum;
-	double equ;
-	double max = 0;
-	unsigned char thresh;
+	u = (double)moment / (double)sum;
+
 	for (unsigned short i = startVal; i <= endVal; i++)
 	{
-		w0 += hist[i];             
-		w1 = sum - w0;						 
-		tmp += i * hist[i];      
-		u0 = (double)tmp / (double)w0;               
-		u1 = (double)(moment - tmp) / (double)w1;     
+		sum0 += hist[i];
+		sum1 = sum - sum0;
+		moment0 += i * hist[i];
+		moment1 = moment - moment0;
 
-		equ = w0 * (u0 - u) * (u0 - u) + w1 * (u1 - u) * (u1 - u);        
+		u0 = (double)moment0 / (double)sum0;
+		u1 = (double)moment1 / (double)sum1;
 
-		if (equ > max)
+		interClassInvar = sum0 * (u0 - u) * (u0 - u) + sum1 * (u1 - u) * (u1 - u);
+
+		if (interClassInvar > maxInterClassInvar)
 		{
 			thresh = i;
-			max = equ;
+			maxInterClassInvar = interClassInvar;
 		}
 	}
 
@@ -273,6 +283,166 @@ void binary(unsigned char* p_img, unsigned char thresh, unsigned char maxVal, un
 			p_img[i] = maxVal;
 		else
 			p_img[i] = 0;
+	}
+}
+
+
+void otsuBinary(unsigned char* p_img, unsigned short w, unsigned short h)
+{
+	// get histogram
+	unsigned int hist[256] = { 0 };
+
+	unsigned int sum = w * h;
+	unsigned int sum0 = 0;
+	unsigned int sum1 = 0;
+
+	unsigned long long moment = 0;
+	unsigned long long moment0 = 0;
+	unsigned long long moment1 = 0;
+
+	double u0, u1, u;
+	double interClassInvar;
+	double maxInterClassInvar = 0;
+
+	unsigned char thresh, startVal, endVal;
+
+	for (unsigned int i = 0; i < sum; ++i)
+	{
+		hist[p_img[i]]++;
+	}
+
+	startVal = 0;
+	while (hist[startVal] == 0)   startVal++;
+
+	endVal = 255;
+	while (hist[endVal] == 0)   endVal--;
+
+
+	for (unsigned short i = startVal; i <= endVal; i++)
+	{
+		moment += i * hist[i];
+	}
+
+	u = (double)moment / (double)sum;
+
+	for (unsigned short i = startVal; i <= endVal; i++)
+	{
+		sum0 += hist[i];
+		sum1 = sum - sum0;
+		moment0 += i * hist[i];
+		moment1 = moment - moment0;
+
+		u0 = (double)moment0 / (double)sum0;
+		u1 = (double)moment1 / (double)sum1;
+
+		interClassInvar = sum0 * (u0 - u) * (u0 - u) + sum1 * (u1 - u) * (u1 - u);
+
+		if (interClassInvar > maxInterClassInvar)
+		{
+			thresh = i;
+			maxInterClassInvar = interClassInvar;
+		}
+	}
+
+	for (unsigned int i = 0; i < sum; ++i)
+	{
+		if (p_img[i] > thresh)
+			p_img[i] = 255;
+		else
+			p_img[i] = 0;
+	}
+}
+
+
+void otsuBinaryOfRegion(unsigned char* p_img, unsigned short w, unsigned short h, unsigned short wBig)
+{
+	// get histogram
+	unsigned int hist[256] = { 0 };
+
+	unsigned int sum = w * h;
+	unsigned int sum0 = 0;
+	unsigned int sum1 = 0;
+
+	unsigned long long moment = 0;
+	unsigned long long moment0 = 0;
+	unsigned long long moment1 = 0;
+
+	double u0, u1, u;
+	double interClassInvar;
+	double maxInterClassInvar = 0;
+
+	unsigned char thresh, startVal, endVal;
+
+	for (unsigned int j = 0; j < h; ++j)
+	{
+		for (unsigned int i = 0; i < w; ++i)
+		{
+			hist[p_img[j * wBig + i]]++;
+		}
+	}
+
+	startVal = 0;
+	while (hist[startVal] == 0)   startVal++;
+
+	endVal = 255;
+	while (hist[endVal] == 0)   endVal--;
+
+	for (unsigned short i = startVal; i <= endVal; i++)
+	{
+		moment += i * hist[i];
+	}
+
+	u = (double)moment / (double)sum;
+
+	for (unsigned short i = startVal; i <= endVal; i++)
+	{
+		sum0 += hist[i];
+		sum1 = sum - sum0;
+		moment0 += i * hist[i];
+		moment1 = moment - moment0;
+
+		u0 = (double)moment0 / (double)sum0;
+		u1 = (double)moment1 / (double)sum1;
+
+		interClassInvar = sum0 * (u0 - u) * (u0 - u) + sum1 * (u1 - u) * (u1 - u);
+
+		if (interClassInvar > maxInterClassInvar)
+		{
+			thresh = i;
+			maxInterClassInvar = interClassInvar;
+		}
+	}
+
+	for (unsigned int j = 0; j < h; ++j)
+	{
+		for (unsigned int i = 0; i < w; ++i)
+		{
+			if (p_img[j * wBig + i] > thresh)
+				p_img[j * wBig + i] = 255;
+			else
+				p_img[j * wBig + i] = 0;
+		}
+	}
+}
+
+
+void localOtsuBinary(unsigned char* p_img, unsigned short w, unsigned short h, int numOfRegion)
+{
+	int i = 0;
+	int div = sqrt((double)numOfRegion);
+	int wDiv = w / div;
+	int hDiv = h / div;
+	int dx = 0;
+	int dy = 0;
+	int x = 0;
+	int y = 0;
+
+	for (dx = 0; dx < div; ++dx)
+	{
+		for (dy = 0; dy < div; ++dy)
+		{
+			otsuBinaryOfRegion(p_img + dx * wDiv + dy * hDiv * w, wDiv, hDiv, w);
+		}
 	}
 }
 
@@ -310,6 +480,23 @@ void calcPreview(unsigned char* p_img, unsigned char* p_markImg, unsigned char t
 	}
 }
 
+void elate(unsigned char* p_img, unsigned char* p_elateImg, unsigned short w, unsigned short h)
+{
+	unsigned int totalSize = w * h;
+	unsigned int filtSize = w * (h - 1) - 1;
+
+	for (unsigned int i = w + 1; i < filtSize; ++i)
+	{
+		if (p_img[i - w - 1] == 255 || p_img[i - w] == 255 || p_img[i - w + 1] == 255 ||
+			p_img[i - 1] == 255 || p_img[i] == 255 || p_img[i + 1] == 255 ||
+			p_img[i + w - 1] == 255 || p_img[i + w] == 255 || p_img[i + w + 1] == 255)
+		{
+			p_elateImg[i] = 255;
+		}
+	}
+
+}
+
 void erode(unsigned char* p_img, unsigned char* p_erodeImg, unsigned short w, unsigned short h)
 {
 	unsigned int totalSize = w * h;
@@ -317,12 +504,6 @@ void erode(unsigned char* p_img, unsigned char* p_erodeImg, unsigned short w, un
 
 	for (unsigned int i = w + 1; i < filtSize; ++i)
 	{
-		if (i == 155786)
-		{
-			i++;
-			i--;
-		}
-
 		if (p_img[i - w - 1] == 255 && p_img[i - w] == 255 && p_img[i - w + 1] == 255 &&
 			p_img[i - 1] == 255 && p_img[i] == 255 && p_img[i + 1] == 255 &&
 			p_img[i + w - 1] == 255 && p_img[i + w] == 255 && p_img[i + w + 1] == 255)
@@ -340,5 +521,37 @@ void subtract(unsigned char* p_img, unsigned char* p_imgSub, unsigned short w, u
 	for (unsigned int i = 0; i < totalSize; ++i)
 	{
 		p_img[i] = (p_img[i] - p_imgSub[i]);
+	}
+}
+
+
+void equHist(unsigned char* p_img, unsigned char* p_markImg, unsigned short w, unsigned short h)
+{
+	int i = 0;
+	int sum = w * h;
+	int regionSum = 0;
+
+	unsigned int hist[256] = { 0 };
+
+	for (i = 0; i < sum; ++i)
+	{
+		if (p_markImg[i] == 0)
+			continue;
+
+		hist[p_img[i]]++;
+		regionSum++;
+	}
+
+	for (i = 1; i < 256; ++i)
+	{
+		hist[i] += hist[i - 1];
+	}
+
+	for (i = 0; i < sum; ++i)
+	{
+		if (p_markImg[i] == 0)
+			continue;
+
+		p_img[i] = ((double)hist[p_img[i]] * 255.0) / (double)regionSum;
 	}
 }

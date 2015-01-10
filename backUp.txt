@@ -1,0 +1,131 @@
+	// step 3: rectify the match based on ransac
+	PointPair* p_pairsEnd = p_pairs + *p_pairNum;
+	PointPair* p_pairsCur = p_pairs;
+	for (; p_pairsCur != p_pairsEnd; ++p_pairsCur)
+	{
+		p_pairsCur->pR.x = (double)(p_pairsCur->pL.x) * mat.m1 + (double)(p_pairsCur->pL.y) * mat.m2 + mat.m3;
+		p_pairsCur->pR.y = (double)(p_pairsCur->pL.x) * mat.m4 + (double)(p_pairsCur->pL.y) * mat.m5 + mat.m6;
+	}
+
+
+// draw the link of matched points of two images
+void showMatchResult(const cv::Mat& matL, const cv::Mat& matR, const ProjectMat& realMat, const ProjectMat& suitMat, InterestPoint* p_pointsL, unsigned int pointNumL, const PointPair* p_pairs, unsigned int pairNum, double dThresh, unsigned int step)
+{
+	if (p_pairs == NULL)
+	{
+		DEBUG_PRINT_DETAILED("NULL input of pointers");
+		exit(-1);
+	}
+
+	// merge the input images into one image
+	cv::Mat_<cv::Vec3b> matArr[2] = {matL, matR};
+	cv::Mat_<cv::Vec3b> mergedMat = mergeMats(matArr, 2, horizontal);
+
+	unsigned short wL = matL.cols;
+
+	// step 3: rectify the match based on ransac
+	InterestPoint* p_pointsLEnd = p_pointsL + pointNumL;
+	InterestPoint* p_pointsLCur = p_pointsL;
+
+	for (p_pointsLCur = p_pointsL; p_pointsLCur < p_pointsLEnd; p_pointsLCur += step)
+	{
+		if (p_pointsLCur >= p_pointsLEnd)
+			break;
+
+		double xL = p_pointsLCur->c.x;
+		double yL = p_pointsLCur->c.y;
+		double xR = xL * suitMat.m1 + yL * suitMat.m2 + suitMat.m3;
+		double yR = xL * suitMat.m4 + yL * suitMat.m5 + suitMat.m6;
+
+		cv::line(mergedMat, cv::Point(xL, yL), cv::Point(xR, yR), cv::Scalar(255, 255, 255), 1);
+	}
+
+#ifdef _MODULATE_DATA_
+	// show affine mat
+	InterestPoint* p_pointsLEnd = p_pointsL + pointNumL;
+	InterestPoint* p_pointsLCur = p_pointsL;
+	int matchedNum = 0;
+	for (; p_pointsLCur != p_pointsLEnd; ++p_pointsLCur)
+	{
+		double xReal = (double)p_pointsLCur->c.x * realMat.m1 + (double)p_pointsLCur->c.y * realMat.m2 + realMat.m3;
+		double yReal = (double)p_pointsLCur->c.x * realMat.m4 + (double)p_pointsLCur->c.y * realMat.m5 + realMat.m6;
+
+		double xCalc = (double)p_pointsLCur->c.x * suitMat.m1 + (double)p_pointsLCur->c.y * suitMat.m2 + suitMat.m3;
+		double yCalc = (double)p_pointsLCur->c.x * suitMat.m4 + (double)p_pointsLCur->c.y * suitMat.m5 + suitMat.m6;
+
+		double dist = pow((xReal - xCalc), 2) + pow((yReal - yCalc), 2);
+		if (dist <= dThresh)
+			matchedNum++;
+	}
+	cout << "realMat: " << endl;
+	cout << realMat.m1 << "\t" << realMat.m2 << "\t" << realMat.m3 << endl;
+	cout << realMat.m4 << "\t" << realMat.m5 << "\t" << realMat.m6 << endl;
+	cout << "suitMat: " << endl;
+	cout << suitMat.m1 << "\t" << suitMat.m2 << "\t" << suitMat.m3 << endl;
+	cout << suitMat.m4 << "\t" << suitMat.m5 << "\t" << suitMat.m6 << endl;
+	cout << "Matched pairs number: " << pairNum << endl;
+	cout << "matchedNum: " << matchedNum << "\n" << "precision rate: " << (double)matchedNum / (double)pointNumL << endl;
+#endif
+
+	cv::imshow("merged initial images", mergedMat);
+	cv::imwrite("G:/xiangmu/Pictures/juanbidao/result/" + string("joke") + string(".png"), mergedMat);
+}
+
+
+unsigned char otsu(unsigned char* p_img, unsigned short w, unsigned short h)
+{
+	// get histogram
+	unsigned int hist[256] = {0};
+
+	unsigned int sum = w * h;
+	unsigned int sum0 = 0;
+	unsigned int sum1 = 0;
+
+	unsigned long long moment = 0;
+	unsigned long long moment0 = 0;
+	unsigned long long moment1 = 0;
+
+	double u0, u1;
+	double interClassInvar;
+	double maxInterClassInvar = 0;
+
+	unsigned char thresh, startVal, endVal;
+
+	for (unsigned int i = 0; i < sum; ++i)
+	{
+		hist[p_img[i]]++;
+	}
+
+	startVal = 0;
+	while (hist[startVal] == 0)   startVal++;
+
+	endVal = 255;
+	while (hist[endVal] == 0)   endVal--;
+
+
+	for (unsigned short i = startVal; i <= endVal; i++)
+	{
+		moment += i * hist[i];
+	}
+
+	for (unsigned short i = startVal; i <= endVal; i++)
+	{
+		sum0 += hist[i];             
+		sum1 = sum - sum0;						 
+		moment0 += i * hist[i];
+		moment1 = moment - moment0;
+
+		u0 = (double)moment0 / (double)sum0;               
+		u1 = (double)moment1 / (double)sum1;     
+
+		interClassInvar = sum0 * sum1 * (u0 - u1) * (u0 - u1);        
+
+		if (interClassInvar > maxInterClassInvar)
+		{
+			thresh = i;
+			maxInterClassInvar = interClassInvar;
+		}
+	}
+
+	return thresh;
+}

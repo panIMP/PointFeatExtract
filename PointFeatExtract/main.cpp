@@ -21,14 +21,16 @@ int main()
 	// ============================================================================================================================
 	// left image
 	//cv::Mat_<cv::Vec3b> matLColor = cv::imread(string("G:/xiangmu/Pictures/juanbidao/src/juanbidao1.bmp"), cv::IMREAD_COLOR);
+	cv::Mat_<cv::Vec3b> matLColor = cv::imread(string("G:/xiangmu/Pictures/ykq/src/1.bmp"), cv::IMREAD_COLOR);
 	//cv::Mat_<cv::Vec3b> matLColor = cv::imread(string("G:/xiangmu/Pictures/gongjian/1.bmp"), cv::IMREAD_COLOR);
-	cv::Mat_<cv::Vec3b> matLColor = cv::imread(string("G:/xiangmu/Pictures/Dolls/Illum1/Exp1/view0.png"), cv::IMREAD_COLOR);
+	//cv::Mat_<cv::Vec3b> matLColor = cv::imread(string("G:/xiangmu/Pictures/Dolls/Illum1/Exp1/view0.png"), cv::IMREAD_COLOR);
 	//cv::Mat_<cv::Vec3b> matLColor = cv::imread(string("G:/xiangmu/Pictures/grap/img1.ppm"), cv::IMREAD_COLOR);
 
 	// right image
-	//cv::Mat_<cv::Vec3b> matRColor = cv::imread(string("G:/xiangmu/Pictures/juanbidao/yingdongxuanzhuan/juanbidao10.bmp"), cv::IMREAD_COLOR);
+	//cv::Mat_<cv::Vec3b> matRColor = cv::imread(string("G:/xiangmu/Pictures/juanbidao/qingxie/juanbidao5.bmp"), cv::IMREAD_COLOR);
+	cv::Mat_<cv::Vec3b> matRColor = cv::imread(string("G:/xiangmu/Pictures/ykq/pos/5.bmp"), cv::IMREAD_COLOR);
 	//cv::Mat_<cv::Vec3b> matRColor = cv::imread(string("G:/xiangmu/Pictures/gongjian/7.bmp"), cv::IMREAD_COLOR);
-	cv::Mat_<cv::Vec3b> matRColor = cv::imread(string("G:/xiangmu/Pictures/Dolls/Illum1/Exp1/view6.png"), cv::IMREAD_COLOR);
+	//cv::Mat_<cv::Vec3b> matRColor = cv::imread(string("G:/xiangmu/Pictures/Dolls/Illum1/Exp1/view6.png"), cv::IMREAD_COLOR);
 	//cv::Mat_<cv::Vec3b> matRColor = cv::imread(string("G:/xiangmu/Pictures/grap/img3.ppm"), cv::IMREAD_COLOR);
 
 	ProjectMat realMat;
@@ -73,6 +75,18 @@ int main()
 	unsigned short hR = matR.rows;
 	gaussin(p_imgR, wR, hR);
 
+#ifdef _EQU_HIST_FOR_PRE_
+	cv::Mat_<unsigned char> t_matL(wL, hL);
+	matL.copyTo(t_matL);
+	localOtsuBinary(t_matL.data, wL, hL, 1);
+	equHist(p_imgL, t_matL.data, wL, hL);
+
+	cv::Mat_<unsigned char> t_matR(wR, hR);
+	matR.copyTo(t_matR);
+	localOtsuBinary(t_matR.data, wR, hR, 1);
+	equHist(p_imgR, t_matR.data, wR, hR);
+#endif
+
 	// ==============================================================================================================================
 	// create the integrate image of the left image
 	unsigned int* p_integImgL = createIntegImg(p_imgL, wL, hL);
@@ -100,8 +114,8 @@ int main()
 	unsigned int pointNumR = getPointsLocations(p_pointsR, p_markImgR, p_imgR, p_detHesImgPyrR, LAYER_NUM, 200.0, wR, hR);
 
 	// show compare point location result
-	drawRect(matLColor, p_pointsL, pointNumL, 10, 2, cv::Scalar(255, 255, 255));
-	drawRect(matRColor, p_pointsR, pointNumR, 10, 2, cv::Scalar(255, 255, 255));
+	drawRect(matLColor, p_pointsL, pointNumL, 1, 2, cv::Scalar(255, 255, 255));
+	drawRect(matRColor, p_pointsR, pointNumR, 1, 2, cv::Scalar(255, 255, 255));
 
 	// ==============================================================================================================================
 	double dR = (double)(wR * hR) / (double)pointNumR;
@@ -121,7 +135,7 @@ int main()
 	unsigned int pairNum = 0;
 	PointPair* p_pairs = (PointPair*)calloc_check(max(pointNumL, pointNumR), sizeof(PointPair));
 	ProjectMat suitMat = matchInterestPoints(p_pointsL, pointNumL, p_pointsR, pointNumR, p_pairs, &pairNum, dThresh, wL, hL, wR, hR);
-	showMatchResult(matLColor, matRColor, realMat, suitMat, p_pointsL, pointNumL, p_pairs, pairNum, dThresh, 10);
+	showMatchResult(matLColor, matRColor, realMat, suitMat, p_pointsL, pointNumL, p_pairs, pairNum, dThresh, 7);
 
 	// ===============================================================================================================================
 	// free memory
@@ -141,4 +155,42 @@ int main()
 	return 0;
 }
 #endif
+
+
+#ifdef _BINARY_
+
+int main()
+{
+	// left image
+	//cv::Mat_<cv::Vec3b> matLColor = cv::imread(string("G:/xiangmu/Pictures/juanbidao/src/juanbidao1.bmp"), cv::IMREAD_COLOR);
+	//cv::Mat_<cv::Vec3b> matLColor = cv::imread(string("G:/xiangmu/Pictures/gongjian/1.bmp"), cv::IMREAD_COLOR);
+	cv::Mat_<cv::Vec3b> matLColor = cv::imread(string("G:/xiangmu/Pictures/ykq/src/1.bmp"), cv::IMREAD_COLOR);
+
+	cv::Mat_<unsigned char> matL;
+	cv::cvtColor(matLColor, matL, CV_BGR2GRAY);
+	unsigned char* p_imgL = matL.data;
+	unsigned short wL = matL.cols;
+	unsigned short hL = matL.rows;
+
+	cv::Mat_<unsigned char> mat(wL, hL);
+	matL.copyTo(mat);
+
+	gaussin(p_imgL, wL, hL);
+
+	cv::imshow("src", matL);
+
+	localOtsuBinary(mat.data, wL, hL, 4);
+
+	cv::imshow("binary", mat);
+
+	equHist(p_imgL, mat.data, wL, hL);
+
+	cv::imshow("equHist", matL);
+
+	cv::waitKey(0);
+	return 0;
+}
+
+#endif
+
 

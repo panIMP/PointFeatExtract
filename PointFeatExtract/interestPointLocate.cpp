@@ -32,25 +32,25 @@ using namespace std;
 // end ===============================
 const Filter g_filts[LAYER_NUM] =
 {
+	// 0st layer -- box size: 9 * 9
+	{
+		3, 0, 2, 2, 6, 15, 1, 3, 2, 5, 6, 15, -2, 6, 2, 8, 6, 15, 1, 0, 0, 0, 0, 0, 0,
+		3, 2, 0, 6, 2, 15, 1, 2, 3, 6, 5, 15, -2, 2, 6, 6, 8, 15, 1, 0, 0, 0, 0, 0, 0,
+		4, 1, 1, 3, 3, 9, 1, 5, 1, 7, 3, 9, -1, 1, 5, 3, 7, 9, -1, 5, 5, 7, 7, 9, 1,
+	},
+
 	// 1st layer -- box size: 15 * 15
 	{
-		3, 0, 3,  4, 11, 45, 1,  5,  3,  9, 11, 45, -2, 10,  3, 14, 11, 45,  1,  0,  0,  0,  0,  0, 0,
-		3, 3, 0, 11,  4, 45, 1,  3,  5, 11,  9, 45, -2,  3, 10, 11, 14, 45,  1,  0,  0,  0,  0,  0, 0,
-		4, 2, 2,  6,  6, 25, 1,  8,  2, 12,  6, 25, -1,  2,  8,  6, 12, 25, -1,  8,  8, 12, 12, 25, 1,
+		3, 0, 3, 4, 11, 45, 1, 5, 3, 9, 11, 45, -2, 10, 3, 14, 11, 45, 1, 0, 0, 0, 0, 0, 0,
+		3, 3, 0, 11, 4, 45, 1, 3, 5, 11, 9, 45, -2, 3, 10, 11, 14, 45, 1, 0, 0, 0, 0, 0, 0,
+		4, 2, 2, 6, 6, 25, 1, 8, 2, 12, 6, 25, -1, 2, 8, 6, 12, 25, -1, 8, 8, 12, 12, 25, 1,
 	},
 
-	// 3rd layer -- box size: 27 * 27
+	// 2nd layer -- box size: 21 * 21
 	{
-		3, 0, 5, 8, 21, 153, 1, 9, 5, 17, 21, 153, -2, 18, 5, 26, 21, 153, 1, 0, 0, 0, 0, 0, 0,
-		3, 5, 0, 21, 8, 153, 1, 5, 9, 21, 17, 153, -2, 5, 18, 21, 26, 153, 1, 0, 0, 0, 0, 0, 0,
-		4, 4, 4, 12, 12, 81, 1, 14, 4, 22, 12, 81, -1, 4, 14, 12, 22, 81, -1, 14, 14, 22, 22, 81, 1,
-	},
-
-	// 5th layer -- box size: 51 * 51
-	{
-		3, 0, 9, 16, 41, 561, 1, 17, 9, 33, 41, 561, -2, 34, 9, 50, 41, 561, 1, 0, 0, 0, 0, 0, 0,
-		3, 9, 0, 41, 16, 561, 1, 9, 17, 41, 33, 561, -2, 9, 34, 41, 50, 561, 1, 0, 0, 0, 0, 0, 0,
-		4, 8, 8, 24, 24, 289, 1, 26, 8, 42, 24, 289, -1, 8, 26, 24, 42, 289, -1, 26, 26, 42, 42, 289, 1,
+		3, 0, 4, 6, 16, 91, 1, 7, 4, 13, 16, 91, -2, 14, 4, 20, 16, 91, 1, 0, 0, 0, 0, 0, 0,
+		3, 4, 0, 16, 6, 91, 1, 4, 7, 16, 13, 91, -2, 4, 14, 16, 20, 91, 1, 0, 0, 0, 0, 0, 0,
+		4, 3, 3, 9, 9, 49, 1, 11, 3, 17, 9, 49, -1, 3, 11, 9, 17, 49, -1, 11, 11, 17, 17, 49, 1,
 	},
 };
 
@@ -527,9 +527,13 @@ const InterestPoint* getNearestPoint(const InterestPoint *p_pointCur, const Inte
 	for (; p_pointsRef != p_pointsRefEnd; ++p_pointsRef)
 	{
 		double dist = 0.0;
-		
+
+#ifdef _EURO_DIST_
 		dist = getEuroDist2((const double*)(&p_pointCur->mat.feat[0]), (const double*)&p_pointsRef->mat.feat[0], FEAT_NUM);
-		//calcMahaDistance2((const double*)(&p_pointCur->mat.feat[0]), (const double*)&p_pointsRef->mat.feat[0], matCovarInv, FEAT_NUM, &dist);
+#endif
+#ifdef _MAHA_DIST_
+		calcMahaDistance2((const double*)(&p_pointCur->mat.feat[0]), (const double*)&p_pointsRef->mat.feat[0], matCovarInv, FEAT_NUM, &dist);
+#endif
 
 		if (dist < minDist)
 		{
@@ -801,6 +805,7 @@ ProjectMat matchInterestPoints(InterestPoint *p_pointsL, int pointNumL, Interest
 		exit(-1);
 	}
 
+	ProjectMat mat;
 	double** matXs = NULL;
 	double** matCovar = NULL;
 	double** matCovarInv = NULL;
@@ -841,22 +846,14 @@ ProjectMat matchInterestPoints(InterestPoint *p_pointsL, int pointNumL, Interest
 
 	// step 1: rough match based on mutual-minimum-distance
 	*p_pairNum = roughMatch(p_pointsL, pointNumL, p_pointsR, pointNumR, p_pairs, matCovarInv);
+	cout << "rought matched pair number: " << *p_pairNum << endl;
 
 #ifndef _ONLY_ROUGH_
 	// step 2: get the projection match based on ransac
 	//clock_t start = clock();
-	ProjectMat mat = getProjMatByRansac(p_pairs, *p_pairNum, thresh, wL, hL, wR, hR);
+	mat = getProjMatByRansac(p_pairs, *p_pairNum, thresh, wL, hL, wR, hR);
 	//clock_t end = clock();
 	//cout << "ransac time: " << end - start << endl;
-
-	// step 3: rectify the match based on ransac
-	PointPair* p_pairsEnd = p_pairs + *p_pairNum;
-	PointPair* p_pairsCur = p_pairs;
-	for (; p_pairsCur != p_pairsEnd; ++p_pairsCur)
-	{
-		p_pairsCur->pR.x = (double)(p_pairsCur->pL.x) * mat.m1 + (double)(p_pairsCur->pL.y) * mat.m2 + mat.m3;
-		p_pairsCur->pR.y = (double)(p_pairsCur->pL.x) * mat.m4 + (double)(p_pairsCur->pL.y) * mat.m5 + mat.m6;
-	}
 #endif
 
 	free(matXs);
@@ -869,8 +866,9 @@ ProjectMat matchInterestPoints(InterestPoint *p_pointsL, int pointNumL, Interest
 	return mat;
 }
 
+
 // draw the link of matched points of two images
-void showMatchResult(const cv::Mat& matL, const cv::Mat& matR, const ProjectMat& realMat, const ProjectMat& suitMat, InterestPoint* p_pointsL, unsigned int pointNumL, const PointPair* p_pairs, unsigned int pairNum, double dThresh, unsigned int step)
+void showMatchResult(const cv::Mat& matL, const cv::Mat& matR, const ProjectMat& realMat, const ProjectMat& suitMat, const InterestPoint* p_pointsL, unsigned int pointNumL, const PointPair* p_pairs, unsigned int pairNum, double dThresh, unsigned int step)
 {
 	if (p_pairs == NULL)
 	{
@@ -879,34 +877,42 @@ void showMatchResult(const cv::Mat& matL, const cv::Mat& matR, const ProjectMat&
 	}
 
 	// merge the input images into one image
-	cv::Mat_<cv::Vec3b> matArr[2] = {matL, matR};
+	cv::Mat_<cv::Vec3b> matArr[2] = { matL, matR };
 	cv::Mat_<cv::Vec3b> mergedMat = mergeMats(matArr, 2, horizontal);
 
 	unsigned short wL = matL.cols;
 
-	// draw the lines
+#ifndef _ONLY_ROUGH_
 	const PointPair* p_pairsEnd = p_pairs + pairNum;
 	const PointPair* p_pairsCur = p_pairs;
-	for (;;)
+	for (p_pairsCur = p_pairs; p_pairsCur < p_pairsEnd; p_pairsCur += step)
 	{
-		cv::line(mergedMat, cv::Point(p_pairsCur->pL.x, p_pairsCur->pL.y), cv::Point(p_pairsCur->pR.x + wL , p_pairsCur->pR.y), cv::Scalar(255, 255, 255), 1);
-
-		p_pairsCur+=step;
 		if (p_pairsCur >= p_pairsEnd)
 			break;
 
-		cv::line(mergedMat, cv::Point(p_pairsCur->pL.x, p_pairsCur->pL.y), cv::Point(p_pairsCur->pR.x + wL , p_pairsCur->pR.y), cv::Scalar(255, 255, 255), 1);
-		
-		p_pairsCur+=step;
-		if (p_pairsCur >= p_pairsEnd)
-			break;
-		
-		cv::line(mergedMat, cv::Point(p_pairsCur->pL.x, p_pairsCur->pL.y), cv::Point(p_pairsCur->pR.x + wL , p_pairsCur->pR.y), cv::Scalar(255, 255, 255), 1);
+		double xL = p_pairsCur->pL.x;
+		double yL = p_pairsCur->pL.y;
+		double xR = xL * suitMat.m1 + yL * suitMat.m2 + suitMat.m3 + wL;
+		double yR = xL * suitMat.m4 + yL * suitMat.m5 + suitMat.m6;
 
-		p_pairsCur+=step;
-		if (p_pairsCur >= p_pairsEnd)
-			break;
+		cv::line(mergedMat, cv::Point(xL, yL), cv::Point(xR, yR), cv::Scalar(255, 255, 255), 1);
 	}
+#else
+	const PointPair* p_pairsEnd = p_pairs + pairNum;
+	const PointPair* p_pairsCur = p_pairs;
+	for (p_pairsCur = p_pairs; p_pairsCur < p_pairsEnd; p_pairsCur += step)
+	{
+		if (p_pairsCur >= p_pairsEnd)
+			break;
+
+		double xL = p_pairsCur->pL.x;
+		double yL = p_pairsCur->pL.y;
+		double xR = p_pairsCur->pR.x + wL;
+		double yR = p_pairsCur->pR.y;
+
+		cv::line(mergedMat, cv::Point(xL, yL), cv::Point(xR, yR), cv::Scalar(255, 255, 255), 1);
+	}
+#endif
 
 #ifdef _MODULATE_DATA_
 	// show affine mat
@@ -936,7 +942,7 @@ void showMatchResult(const cv::Mat& matL, const cv::Mat& matR, const ProjectMat&
 #endif
 
 	cv::imshow("merged initial images", mergedMat);
-	cv::imwrite("G:/xiangmu/Pictures/juanbidao/result/" + string("joke") + string(".png"), mergedMat);
+	cv::imwrite("G:/xiangmu/Pictures/juanbidao/result/" + string("joke2") + string(".png"), mergedMat);
 }
 
 // draw the rectangle around the interest point

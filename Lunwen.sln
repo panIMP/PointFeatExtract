@@ -9,6 +9,11 @@ Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "MTool", "..\MTool\MTool.vcx
 EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "DTool", "..\DTool\DTool.vcxproj", "{9A04D715-C385-4A4B-A3C4-97DC606CCA80}"
 EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Solution Items", "Solution Items", "{B0BACFAD-AB85-4BDA-9B40-95AFFFB3EBAE}"
+	ProjectSection(SolutionItems) = preProject
+		backUp.txt = backUp.txt
+	EndProjectSection
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Win32 = Debug|Win32

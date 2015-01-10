@@ -179,7 +179,7 @@ ProjectMat matchInterestPoints(InterestPoint *p_pointsL, int pointNumL, Interest
 ProjectMat getProjMatByRansac(const PointPair* p_pairs, unsigned int pairNum, double distThresh, unsigned short wL, unsigned short hL, unsigned short wR, unsigned short hR);
 
 // draw the link of matched points of two images
-void showMatchResult(const cv::Mat& matL, const cv::Mat& matR, const ProjectMat& realMat, const ProjectMat& suitMat, InterestPoint* p_pointsL, unsigned int pointNumL, const PointPair* p_pairs, unsigned int pairNum, double dThresh, unsigned int step);
+void showMatchResult(const cv::Mat& matL, const cv::Mat& matR, const ProjectMat& realMat, const ProjectMat& suitMat, const InterestPoint* p_pointsL, unsigned int pointNumL, const PointPair* p_pairs, unsigned int pairNum, double dThresh, unsigned int step);
 
 
 #endif // FPLOCATE_H
