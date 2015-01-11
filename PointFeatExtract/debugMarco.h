@@ -2,9 +2,9 @@
 #define _DEBUG_MACRO_H
 
 
-#define _MAIN_TEST_
-#define _EQU_HIST_FOR_PRE_
-//#define _BINARY_
+//#define _MAIN_TEST_
+//#define _EQU_HIST_FOR_PRE_
+#define _BINARY_
 
 //#define _MODULATE_DATA_
 #define _REAL_DATA_

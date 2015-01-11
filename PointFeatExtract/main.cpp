@@ -20,18 +20,20 @@ int main()
 {
 	// ============================================================================================================================
 	// left image
-	//cv::Mat_<cv::Vec3b> matLColor = cv::imread(string("G:/xiangmu/Pictures/juanbidao/src/juanbidao1.bmp"), cv::IMREAD_COLOR);
-	cv::Mat_<cv::Vec3b> matLColor = cv::imread(string("G:/xiangmu/Pictures/ykq/src/1.bmp"), cv::IMREAD_COLOR);
+	cv::Mat_<cv::Vec3b> matLColor = cv::imread(string("G:/xiangmu/Pictures/juanbidao/src/juanbidao1.bmp"), cv::IMREAD_COLOR);
+	//cv::Mat_<cv::Vec3b> matLColor = cv::imread(string("G:/xiangmu/Pictures/ykq/src/1.bmp"), cv::IMREAD_COLOR);
 	//cv::Mat_<cv::Vec3b> matLColor = cv::imread(string("G:/xiangmu/Pictures/gongjian/1.bmp"), cv::IMREAD_COLOR);
 	//cv::Mat_<cv::Vec3b> matLColor = cv::imread(string("G:/xiangmu/Pictures/Dolls/Illum1/Exp1/view0.png"), cv::IMREAD_COLOR);
 	//cv::Mat_<cv::Vec3b> matLColor = cv::imread(string("G:/xiangmu/Pictures/grap/img1.ppm"), cv::IMREAD_COLOR);
+	//cv::Mat_<cv::Vec3b> matLColor = cv::imread(string("G:/xiangmu/Pictures/sift/box.pgm"), cv::IMREAD_COLOR);
 
 	// right image
-	//cv::Mat_<cv::Vec3b> matRColor = cv::imread(string("G:/xiangmu/Pictures/juanbidao/qingxie/juanbidao5.bmp"), cv::IMREAD_COLOR);
-	cv::Mat_<cv::Vec3b> matRColor = cv::imread(string("G:/xiangmu/Pictures/ykq/pos/5.bmp"), cv::IMREAD_COLOR);
+	cv::Mat_<cv::Vec3b> matRColor = cv::imread(string("G:/xiangmu/Pictures/juanbidao/qingxie/juanbidao5.bmp"), cv::IMREAD_COLOR);
+	//cv::Mat_<cv::Vec3b> matRColor = cv::imread(string("G:/xiangmu/Pictures/ykq/pos/5.bmp"), cv::IMREAD_COLOR);
 	//cv::Mat_<cv::Vec3b> matRColor = cv::imread(string("G:/xiangmu/Pictures/gongjian/7.bmp"), cv::IMREAD_COLOR);
 	//cv::Mat_<cv::Vec3b> matRColor = cv::imread(string("G:/xiangmu/Pictures/Dolls/Illum1/Exp1/view6.png"), cv::IMREAD_COLOR);
 	//cv::Mat_<cv::Vec3b> matRColor = cv::imread(string("G:/xiangmu/Pictures/grap/img3.ppm"), cv::IMREAD_COLOR);
+	//cv::Mat_<cv::Vec3b> matRColor = cv::imread(string("G:/xiangmu/Pictures/sift/scene.pgm"), cv::IMREAD_COLOR);
 
 	ProjectMat realMat;
 	realMat.m1 = 1;
@@ -113,10 +115,6 @@ int main()
 	unsigned char* p_markImgR = (unsigned char*)calloc_check(wR * hR, sizeof(unsigned char));
 	unsigned int pointNumR = getPointsLocations(p_pointsR, p_markImgR, p_imgR, p_detHesImgPyrR, LAYER_NUM, 200.0, wR, hR);
 
-	// show compare point location result
-	drawRect(matLColor, p_pointsL, pointNumL, 1, 2, cv::Scalar(255, 255, 255));
-	drawRect(matRColor, p_pointsR, pointNumR, 1, 2, cv::Scalar(255, 255, 255));
-
 	// ==============================================================================================================================
 	double dR = (double)(wR * hR) / (double)pointNumR;
 	unsigned short r = sqrt(dR);
@@ -129,6 +127,10 @@ int main()
 	wipeOutBoudaryPixel(p_pointsR, &pointNumR, r, wR, hR);
 	cout << "right image interest point number: " << pointNumR << endl;
 	getPointsFeats(p_pointsR, pointNumR, p_imgR, r, wR);
+
+	// show compare point location result
+	drawRect(matLColor, p_pointsL, pointNumL, 1, 2, cv::Scalar(255, 255, 255));
+	drawRect(matRColor, p_pointsR, pointNumR, 1, 2, cv::Scalar(255, 255, 255));
 
 	// ==============================================================================================================================
 	// match the two images
@@ -162,30 +164,38 @@ int main()
 int main()
 {
 	// left image
-	//cv::Mat_<cv::Vec3b> matLColor = cv::imread(string("G:/xiangmu/Pictures/juanbidao/src/juanbidao1.bmp"), cv::IMREAD_COLOR);
+	cv::Mat_<cv::Vec3b> matLColor = cv::imread(string("G:/xiangmu/Pictures/juanbidao/guangzhao/juanbidao9.bmp"), cv::IMREAD_COLOR);
 	//cv::Mat_<cv::Vec3b> matLColor = cv::imread(string("G:/xiangmu/Pictures/gongjian/1.bmp"), cv::IMREAD_COLOR);
-	cv::Mat_<cv::Vec3b> matLColor = cv::imread(string("G:/xiangmu/Pictures/ykq/src/1.bmp"), cv::IMREAD_COLOR);
+	//cv::Mat_<cv::Vec3b> matLColor = cv::imread(string("G:/xiangmu/Pictures/ykq/src/1.bmp"), cv::IMREAD_COLOR);
 
 	cv::Mat_<unsigned char> matL;
 	cv::cvtColor(matLColor, matL, CV_BGR2GRAY);
 	unsigned char* p_imgL = matL.data;
 	unsigned short wL = matL.cols;
 	unsigned short hL = matL.rows;
-
-	cv::Mat_<unsigned char> mat(wL, hL);
-	matL.copyTo(mat);
+	cv::Mat_<unsigned char> mat1(wL, hL);
+	cv::Mat_<unsigned char> mat2(wL, hL);
+	cv::Mat_<unsigned char> mat3(wL, hL);
 
 	gaussin(p_imgL, wL, hL);
 
+	matL.copyTo(mat1);
+	matL.copyTo(mat2);
+	matL.copyTo(mat3);
+
 	cv::imshow("src", matL);
 
-	localOtsuBinary(mat.data, wL, hL, 4);
+	cv::threshold(matL, matL, 0, 255, cv::THRESH_OTSU);
+	cv::imshow("opencv global otsu", matL);
 
-	cv::imshow("binary", mat);
+	otsuBinary(mat1.data, wL, hL);
+	cv::imshow("global otsu", mat1);
 
-	equHist(p_imgL, mat.data, wL, hL);
+	localOtsuBinary(mat2.data, wL, hL, 4);
+	cv::imshow("local otsu", mat2);
 
-	cv::imshow("equHist", matL);
+	localOtsuRecurBinary(mat3.data, wL, hL, 4);
+	cv::imshow("local recur otsu", mat3);
 
 	cv::waitKey(0);
 	return 0;

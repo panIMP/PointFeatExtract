@@ -32,9 +32,13 @@ void binary(unsigned char* p_img, unsigned char thresh, unsigned char maxVal, un
 
 void otsuBinary(unsigned char* p_img, unsigned short w, unsigned short h);
 
+unsigned char otsuOfRegion(unsigned char* p_img, unsigned short w, unsigned short h, unsigned short wBig);
+
 void otsuBinaryOfRegion(unsigned char* p_img, unsigned short w, unsigned short h, unsigned short wBig);
 
 void localOtsuBinary(unsigned char* p_img, unsigned short w, unsigned short h, int numOfRegion);
+
+void localOtsuRecurBinary(unsigned char* p_img, unsigned short w, unsigned short h, int numOfRegion);
 
 void elate(unsigned char* p_img, unsigned char* p_elateImg, unsigned short w, unsigned short h);
 

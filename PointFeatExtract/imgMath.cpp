@@ -371,7 +371,12 @@ void otsuBinaryOfRegion(unsigned char* p_img, unsigned short w, unsigned short h
 	double interClassInvar;
 	double maxInterClassInvar = 0;
 
-	unsigned char thresh, startVal, endVal;
+	unsigned char thresh = 0;
+	unsigned char startVal = 0;
+	unsigned char endVal = 0;
+
+	unsigned int i = 0;
+	unsigned int j = 0;
 
 	for (unsigned int j = 0; j < h; ++j)
 	{
@@ -387,14 +392,14 @@ void otsuBinaryOfRegion(unsigned char* p_img, unsigned short w, unsigned short h
 	endVal = 255;
 	while (hist[endVal] == 0)   endVal--;
 
-	for (unsigned short i = startVal; i <= endVal; i++)
+	for (i = startVal; i <= endVal; i++)
 	{
 		moment += i * hist[i];
 	}
 
 	u = (double)moment / (double)sum;
 
-	for (unsigned short i = startVal; i <= endVal; i++)
+	for (i = startVal; i <= endVal; i++)
 	{
 		sum0 += hist[i];
 		sum1 = sum - sum0;
@@ -413,9 +418,9 @@ void otsuBinaryOfRegion(unsigned char* p_img, unsigned short w, unsigned short h
 		}
 	}
 
-	for (unsigned int j = 0; j < h; ++j)
+	for (j = 0; j < h; ++j)
 	{
-		for (unsigned int i = 0; i < w; ++i)
+		for (i = 0; i < w; ++i)
 		{
 			if (p_img[j * wBig + i] > thresh)
 				p_img[j * wBig + i] = 255;
@@ -426,22 +431,196 @@ void otsuBinaryOfRegion(unsigned char* p_img, unsigned short w, unsigned short h
 }
 
 
+unsigned char otsuOfRegion(unsigned char* p_img, unsigned short w, unsigned short h, unsigned short wBig)
+{
+	// get histogram
+	unsigned int hist[256] = { 0 };
+
+	unsigned int sum = w * h;
+	unsigned int sum0 = 0;
+	unsigned int sum1 = 0;
+
+	unsigned long long moment = 0;
+	unsigned long long moment0 = 0;
+	unsigned long long moment1 = 0;
+
+	double u0, u1, u;
+	double interClassInvar;
+	double maxInterClassInvar = 0;
+
+	unsigned int i = 0;
+
+	unsigned char thresh, startVal, endVal;
+
+	for (unsigned int j = 0; j < h; ++j)
+	{
+		for (unsigned int i = 0; i < w; ++i)
+		{
+			hist[p_img[j * wBig + i]]++;
+		}
+	}
+
+	startVal = 0;
+	while (hist[startVal] == 0)   startVal++;
+
+	endVal = 255;
+	while (hist[endVal] == 0)   endVal--;
+
+	for (i = startVal; i <= endVal; i++)
+	{
+		moment += i * hist[i];
+	}
+
+	u = (double)moment / (double)sum;
+
+	for (i = startVal; i <= endVal; i++)
+	{
+		sum0 += hist[i];
+		sum1 = sum - sum0;
+		moment0 += i * hist[i];
+		moment1 = moment - moment0;
+
+		u0 = (double)moment0 / (double)sum0;
+		u1 = (double)moment1 / (double)sum1;
+
+		interClassInvar = sum0 * (u0 - u) * (u0 - u) + sum1 * (u1 - u) * (u1 - u);
+
+		if (interClassInvar > maxInterClassInvar)
+		{
+			thresh = i;
+			maxInterClassInvar = interClassInvar;
+		}
+	}
+
+	return thresh;
+}
+
+
+void localOtsuRecurBinary(unsigned char* p_img, unsigned short w, unsigned short h, int numOfRegion)
+{
+	int i = 0;
+	int div = sqrt((double)numOfRegion);
+
+	unsigned short wDiv = w / div;
+	unsigned short hDiv = h / div;
+	unsigned short gapNumOfX = 0;
+	unsigned short gapNumOfY = 0;
+	unsigned short x = 0;
+	unsigned short y = 0;
+
+	unsigned int sum = w * h;
+
+	unsigned int histOfThresh[256] = { 0 };
+
+	unsigned int numOfRegion0 = 0;
+	unsigned int numOfRegion1 = 0;
+
+	unsigned long long moment = 0;
+	unsigned long long moment0 = 0;
+	unsigned long long moment1 = 0;
+
+	double u0, u1, u;
+	double interClassInvar;
+	double maxInterClassInvar = 0;
+
+	unsigned char thresh = 0;
+	unsigned char startVal = 0; 
+	unsigned char endVal = 0;
+
+	for (gapNumOfX = 0; gapNumOfX < div; ++gapNumOfX)
+	{
+		for (gapNumOfY = 0; gapNumOfY < div; ++gapNumOfY)
+		{
+			histOfThresh[otsuOfRegion(p_img + gapNumOfX * wDiv + gapNumOfY * hDiv * w, wDiv, hDiv, w)] ++;
+		}
+	}
+
+	startVal = 0;
+	while (histOfThresh[startVal] == 0)   startVal++;
+
+	endVal = 255;
+	while (histOfThresh[endVal] == 0)   endVal--;
+
+
+	if (numOfRegion == 1)
+	{
+		thresh = startVal;
+	}
+	else
+	{
+		for (i = startVal; i <= endVal; i++)
+		{
+			moment += i * histOfThresh[i];
+		}
+
+		u = (double)moment / (double)numOfRegion;
+
+		for (i = startVal; i <= endVal; i++)
+		{
+			numOfRegion0 += histOfThresh[i];
+			numOfRegion1 = numOfRegion - numOfRegion0;
+			moment0 += i * histOfThresh[i];
+			moment1 = moment - moment0;
+
+			u0 = (double)moment0 / (double)numOfRegion0;
+			u1 = (double)moment1 / (double)numOfRegion1;
+
+			interClassInvar = numOfRegion0 * (u0 - u) * (u0 - u) + numOfRegion1 * (u1 - u) * (u1 - u);
+
+			if (interClassInvar > maxInterClassInvar)
+			{
+				thresh = i;
+				maxInterClassInvar = interClassInvar;
+			}
+		}
+	}
+
+	for (i = 0; i < sum; ++i)
+	{
+		if (p_img[i] > thresh)
+			p_img[i] = 255;
+		else
+			p_img[i] = 0;
+	}
+}
+
+
 void localOtsuBinary(unsigned char* p_img, unsigned short w, unsigned short h, int numOfRegion)
 {
 	int i = 0;
 	int div = sqrt((double)numOfRegion);
-	int wDiv = w / div;
-	int hDiv = h / div;
-	int dx = 0;
-	int dy = 0;
-	int x = 0;
-	int y = 0;
 
-	for (dx = 0; dx < div; ++dx)
+	unsigned short wDiv = w / div;
+	unsigned short hDiv = h / div;
+	unsigned short gapNumOfX = 0;
+	unsigned short gapNumOfY = 0;
+	unsigned short x = 0;
+	unsigned short y = 0;
+
+	unsigned int sum = w * h;
+
+	unsigned int histOfThresh[256] = { 0 };
+
+	unsigned int numOfRegion0 = 0;
+	unsigned int numOfRegion1 = 0;
+
+	unsigned long long moment = 0;
+	unsigned long long moment0 = 0;
+	unsigned long long moment1 = 0;
+
+	double u0, u1, u;
+	double interClassInvar;
+	double maxInterClassInvar = 0;
+
+	unsigned char thresh = 0;
+	unsigned char startVal = 0;
+	unsigned char endVal = 0;
+
+	for (gapNumOfX = 0; gapNumOfX < div; ++gapNumOfX)
 	{
-		for (dy = 0; dy < div; ++dy)
+		for (gapNumOfY = 0; gapNumOfY < div; ++gapNumOfY)
 		{
-			otsuBinaryOfRegion(p_img + dx * wDiv + dy * hDiv * w, wDiv, hDiv, w);
+			otsuBinaryOfRegion(p_img + gapNumOfX * wDiv + gapNumOfY * hDiv * w, wDiv, hDiv, w);
 		}
 	}
 }
@@ -493,6 +672,8 @@ void elate(unsigned char* p_img, unsigned char* p_elateImg, unsigned short w, un
 		{
 			p_elateImg[i] = 255;
 		}
+		else
+			p_elateImg[i] = 0;
 	}
 
 }
