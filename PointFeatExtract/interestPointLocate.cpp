@@ -272,7 +272,7 @@ unsigned int getPointsLocations(InterestPoint* p_points, unsigned char* p_markIm
 
 		for (unsigned int c = w + 1; c != filtSize; ++c, ++p_detHesImgCur, ++p_detHesImgUp, ++p_detHesImgDown)
 		{
-			if (p_detHesImgCur->val > detHesThresh && p_markImg[c] == UNMARKED && isRegionMaximum(p_detHesImgCur, p_detHesImgUp, p_detHesImgDown, w))
+			if (p_detHesImgCur->val > detHesThresh && p_markImg[c] == SHOULDMARK && isRegionMaximum(p_detHesImgCur, p_detHesImgUp, p_detHesImgDown, w))
 			{
 				if (abs(p_detHesImgCur->dxx / p_detHesImgCur->dyy) > 10 || abs(p_detHesImgCur->dyy / p_detHesImgCur->dxx) > 10)
 				{
@@ -334,7 +334,7 @@ void wipeOutBoudaryPixel(InterestPoint* p_points, unsigned int* p_pointNum, unsi
 }
 
 // calculate the feature of one interest point
-void calcFeat(InterestPoint* p_point, const unsigned char* p_img, coord* p_coords, unsigned int neighPointNum, unsigned short w)
+void calcFeat(InterestPoint* p_point, const unsigned char* p_img, Coord* p_coords, unsigned int neighPointNum, unsigned short w)
 {
 	if (p_point == NULL || p_img == NULL)
 	{
@@ -369,11 +369,11 @@ void calcFeat(InterestPoint* p_point, const unsigned char* p_img, coord* p_coord
 	double sumXY2 = 0;
 	double sumXY2Sigma = 0;
 
-	const coord* p_coordsCur = p_coords;
-	const coord* p_coordsEnd = p_coords + neighPointNum;
+	const Coord* p_coordsCur = p_coords;
+	const Coord* p_coordsEnd = p_coords + neighPointNum;
 	for (p_coordsCur = p_coords; p_coordsCur != p_coordsEnd; ++p_coordsCur)
 	{
-		sum += p_img[(p_coordsCur->y + y0) * w + p_coordsCur->x + x0] * p_coordsCur->wei;
+		sum += p_img[(p_coordsCur->y + y0) * w + p_coordsCur->x + x0];
 	}
 	valEven = sum / (double)neighPointNum;
 	sum = 0;
@@ -390,7 +390,7 @@ void calcFeat(InterestPoint* p_point, const unsigned char* p_img, coord* p_coord
 		x2y = x2 * y;
 		xy2 = x * y2;
 
-		val = p_img[(unsigned long long)(y * w + x)] * p_coordsCur->wei;
+		val = p_img[(unsigned long long)(y * w + x)];
 		val -= valEven;
 		valSigma = val * val;
 
@@ -482,7 +482,7 @@ void getPointsFeats(InterestPoint* p_points, unsigned int pointNum, const unsign
 		exit(-1);
 	}
 
-	coord* p_coords = (coord*)calloc_check(4 * r * r, sizeof(coord));
+	Coord* p_coords = (Coord*)calloc_check(4 * r * r, sizeof(Coord));
 	unsigned neighPointNum = calcDiskTmplArray(p_coords, r);
 
 	// get the points feat
@@ -533,6 +533,9 @@ const InterestPoint* getNearestPoint(const InterestPoint *p_pointCur, const Inte
 #endif
 #ifdef _MAHA_DIST_
 		calcMahaDistance2((const double*)(&p_pointCur->mat.feat[0]), (const double*)&p_pointsRef->mat.feat[0], matCovarInv, FEAT_NUM, &dist);
+#endif
+#ifdef _ANGLE_DIST_
+		dist = getAngleDist((const double*)(&p_pointCur->mat.feat[0]), (const double*)&p_pointsRef->mat.feat[0], FEAT_NUM);
 #endif
 
 		if (dist < minDist)
@@ -638,9 +641,6 @@ void normalizePointsFeats(InterestPoint* p_pointsL, unsigned int pointNumL, Inte
 		}
 		DEBUG_PRINT_SIMPLIFIED(")\n");
 	}
-
-	
-
 }
 
 // rough match based on mutual-minimum-distance
@@ -806,9 +806,15 @@ ProjectMat matchInterestPoints(InterestPoint *p_pointsL, int pointNumL, Interest
 	}
 
 	ProjectMat mat;
+
+	double** matCovarInv = NULL;
+
+	// step 0: normalize all these feats
+	normalizePointsFeats(p_pointsL, pointNumL, p_pointsR, pointNumR);
+
+#ifdef _MAHA_DIST_
 	double** matXs = NULL;
 	double** matCovar = NULL;
-	double** matCovarInv = NULL;
 	int pointTotalNum = pointNumL + pointNumR;
 	if (callocMat(&matXs, pointTotalNum, FEAT_NUM) < 0)
 		exit(-1);
@@ -816,9 +822,6 @@ ProjectMat matchInterestPoints(InterestPoint *p_pointsL, int pointNumL, Interest
 		exit(-1);
 	if (callocMat(&matCovarInv, FEAT_NUM, FEAT_NUM) < 0)
 		exit(-1);
-
-	// step 0: normalize all these feats
-	normalizePointsFeats(p_pointsL, pointNumL, p_pointsR, pointNumR);
 
 	for (int p = 0; p < pointNumL; ++p)
 	{
@@ -844,6 +847,14 @@ ProjectMat matchInterestPoints(InterestPoint *p_pointsL, int pointNumL, Interest
 	time_t end = clock();
 	cout << "time for calculating mat covar: " << end - start << endl;
 
+	free(matXs);
+	matXs = NULL;
+	free(matCovar);
+	matCovar = NULL;
+	free(matCovarInv);
+	matCovarInv = NULL;
+#endif
+
 	// step 1: rough match based on mutual-minimum-distance
 	*p_pairNum = roughMatch(p_pointsL, pointNumL, p_pointsR, pointNumR, p_pairs, matCovarInv);
 	cout << "rought matched pair number: " << *p_pairNum << endl;
@@ -855,13 +866,6 @@ ProjectMat matchInterestPoints(InterestPoint *p_pointsL, int pointNumL, Interest
 	//clock_t end = clock();
 	//cout << "ransac time: " << end - start << endl;
 #endif
-
-	free(matXs);
-	matXs = NULL;
-	free(matCovar);
-	matCovar = NULL;
-	free(matCovarInv);
-	matCovarInv = NULL;
 
 	return mat;
 }

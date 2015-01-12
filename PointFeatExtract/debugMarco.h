@@ -9,11 +9,12 @@
 //#define _MODULATE_DATA_
 #define _REAL_DATA_
 
-//#define _DEBUG_INFO_
+#define _DEBUG_INFO_
 
 //#define _ONLY_ROUGH_
 #define _EURO_DIST_
 //#define _MAHA_DIST_
+//#define _ANGLE_DIST_
 
 #define _MY_MOMENT_
 

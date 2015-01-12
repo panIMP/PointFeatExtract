@@ -180,7 +180,7 @@ void mean(unsigned char* imageData, unsigned short width, unsigned short height)
 }
 
 // calculate the combinations of a circular disk
-unsigned int calcDiskTmplArray(coord* p_coord, unsigned short r)
+unsigned int calcDiskTmplArray(Coord* p_coord, unsigned short r)
 {
 	unsigned int count = 0;
 
@@ -199,8 +199,6 @@ unsigned int calcDiskTmplArray(coord* p_coord, unsigned short r)
 			{
 				p_coord->x = x;
 				p_coord->y = y;
-				//p_coord->wei = exp((double)dist / div);
-				p_coord->wei = 1;
 
 				++p_coord;
 				count++;
@@ -287,7 +285,7 @@ void binary(unsigned char* p_img, unsigned char thresh, unsigned char maxVal, un
 }
 
 
-void otsuBinary(unsigned char* p_img, unsigned short w, unsigned short h)
+void otsuBinary(unsigned char* p_img, unsigned char maxVal, unsigned short w, unsigned short h)
 {
 	// get histogram
 	unsigned int hist[256] = { 0 };
@@ -347,14 +345,14 @@ void otsuBinary(unsigned char* p_img, unsigned short w, unsigned short h)
 	for (unsigned int i = 0; i < sum; ++i)
 	{
 		if (p_img[i] > thresh)
-			p_img[i] = 255;
+			p_img[i] = maxVal;
 		else
 			p_img[i] = 0;
 	}
 }
 
 
-void otsuBinaryOfRegion(unsigned char* p_img, unsigned short w, unsigned short h, unsigned short wBig)
+void otsuBinaryOfRegion(unsigned char* p_img, unsigned char maxVal, unsigned short w, unsigned short h, unsigned short wBig)
 {
 	// get histogram
 	unsigned int hist[256] = { 0 };
@@ -423,7 +421,7 @@ void otsuBinaryOfRegion(unsigned char* p_img, unsigned short w, unsigned short h
 		for (i = 0; i < w; ++i)
 		{
 			if (p_img[j * wBig + i] > thresh)
-				p_img[j * wBig + i] = 255;
+				p_img[j * wBig + i] = maxVal;
 			else
 				p_img[j * wBig + i] = 0;
 		}
@@ -496,7 +494,7 @@ unsigned char otsuOfRegion(unsigned char* p_img, unsigned short w, unsigned shor
 }
 
 
-void localOtsuRecurBinary(unsigned char* p_img, unsigned short w, unsigned short h, int numOfRegion)
+void localOtsuRecurBinary(unsigned char* p_img, unsigned char maxVal, unsigned short w, unsigned short h, int numOfRegion)
 {
 	int i = 0;
 	int div = sqrt((double)numOfRegion);
@@ -575,17 +573,18 @@ void localOtsuRecurBinary(unsigned char* p_img, unsigned short w, unsigned short
 		}
 	}
 
+	thresh += 1;
 	for (i = 0; i < sum; ++i)
 	{
 		if (p_img[i] > thresh)
-			p_img[i] = 255;
+			p_img[i] = maxVal;
 		else
 			p_img[i] = 0;
 	}
 }
 
 
-void localOtsuBinary(unsigned char* p_img, unsigned short w, unsigned short h, int numOfRegion)
+void localOtsuBinary(unsigned char* p_img, unsigned char maxVal, unsigned short w, unsigned short h, int numOfRegion)
 {
 	int i = 0;
 	int div = sqrt((double)numOfRegion);
@@ -620,44 +619,11 @@ void localOtsuBinary(unsigned char* p_img, unsigned short w, unsigned short h, i
 	{
 		for (gapNumOfY = 0; gapNumOfY < div; ++gapNumOfY)
 		{
-			otsuBinaryOfRegion(p_img + gapNumOfX * wDiv + gapNumOfY * hDiv * w, wDiv, hDiv, w);
+			otsuBinaryOfRegion(p_img + gapNumOfX * wDiv + gapNumOfY * hDiv * w, maxVal, wDiv, hDiv, w);
 		}
 	}
 }
 
-
-void calcPreview(unsigned char* p_img, unsigned char* p_markImg, unsigned char thresh, unsigned short w, unsigned short h)
-{
-	unsigned int totalSize = w * h;
-
-	unsigned int hist[256] = { 0 };
-
-	unsigned int count = 0;
-	for (unsigned int i = 0; i < totalSize; ++i)
-	{
-		if (p_img[i] > thresh)
-		{
-			p_markImg[i] = MARKED_TRUE;
-			hist[p_img[i]]++;
-			count++;
-		}
-		else
-			p_markImg[i] = MARKED_FALSE;
-	}
-
-	for (unsigned short i = 1; i < 256; ++i)
-	{
-		hist[i] = hist[i] + hist[i - 1];
-	}
-
-	for (unsigned int i = 0; i < totalSize; ++i)
-	{
-		if (p_markImg[i] == MARKED_TRUE)
-		{
-			p_img[i] = (double)hist[p_img[i]] / (double)count * 255.0;
-		}
-	}
-}
 
 void elate(unsigned char* p_img, unsigned char* p_elateImg, unsigned short w, unsigned short h)
 {
@@ -678,6 +644,7 @@ void elate(unsigned char* p_img, unsigned char* p_elateImg, unsigned short w, un
 
 }
 
+
 void erode(unsigned char* p_img, unsigned char* p_erodeImg, unsigned short w, unsigned short h)
 {
 	unsigned int totalSize = w * h;
@@ -695,6 +662,7 @@ void erode(unsigned char* p_img, unsigned char* p_erodeImg, unsigned short w, un
 	}
 
 }
+
 
 void subtract(unsigned char* p_img, unsigned char* p_imgSub, unsigned short w, unsigned short h)
 {
@@ -735,4 +703,232 @@ void equHist(unsigned char* p_img, unsigned char* p_markImg, unsigned short w, u
 
 		p_img[i] = ((double)hist[p_img[i]] * 255.0) / (double)regionSum;
 	}
+}
+
+
+int markOutContour(unsigned char* p_img, Contour* p_contours, unsigned short w, unsigned short h)
+{
+	unsigned short x = 0;
+	unsigned short y = 0;
+
+	unsigned short xCur = 0;
+	unsigned short yCur = 0;
+
+	unsigned short xStart = 0;
+	unsigned short yStart = 0;
+
+	unsigned short xTmp = 0;
+	unsigned short yTmp = 0;
+
+	short offsetSeq = 0;
+	short searchTime = 0;
+	Coord coordOffsetOf8Conn[8] = { { 1, 0 }, { 1, 1 }, { 0, 1 }, { -1, 1 }, { -1, 0 }, { -1, -1 }, { 0, -1 }, { 1, -1 } };
+
+	char atStartPos = 0;
+
+	unsigned int contourSeq = 0;
+
+	unsigned int i = 0;
+	unsigned int j = 0;
+
+	for (y = 1; y < h; ++y)
+	{
+		for (x = 1; x < w; ++x)
+		{
+			if (p_img[y * w + x] == 0)
+				continue;
+
+			xStart = x;
+			yStart = y;
+			xCur = x;
+			yCur = y;
+			atStartPos = 1;
+			offsetSeq = 0;
+			p_contours->num[contourSeq] = 0;
+
+			while ((xCur != xStart || yCur != yStart) || atStartPos)
+			{
+				atStartPos = 0;
+
+				xTmp = xCur + coordOffsetOf8Conn[offsetSeq].x;
+				yTmp = yCur + coordOffsetOf8Conn[offsetSeq].y;
+
+				searchTime = 1;
+
+				while (p_img[yTmp * w + xTmp] == 0 && searchTime <= 8)
+				{
+					offsetSeq++;
+					searchTime++;
+					if (offsetSeq >= 8)
+						offsetSeq -= 8;
+
+					xTmp = xCur + coordOffsetOf8Conn[offsetSeq].x;
+					yTmp = yCur + coordOffsetOf8Conn[offsetSeq].y;
+				}
+
+				// singular point
+				if (searchTime > 8)
+				{
+					p_img[yCur * w + xCur] = 0;
+					break;
+				}
+
+				p_img[yTmp * w + xTmp] = 0;
+
+				p_contours->p_coords[i].x = xTmp;
+				p_contours->p_coords[i].y = yTmp;
+				p_contours->num[contourSeq]++;
+				i++;
+				xCur = xTmp;
+				yCur = yTmp;
+
+				offsetSeq += 6;
+				if (offsetSeq >= 8)
+					offsetSeq -= 8;
+			}
+
+			if (xCur != xStart || yCur != yStart || p_contours->num[contourSeq] <= 3)
+			{
+				// if there is only one pixel size gap between starting point and ending point, tolerate it to be a closed contour
+				if (abs(xCur - xStart) < 3 && abs(yCur - yStart) < 3 && p_contours->num[contourSeq] > 3)
+				{
+					contourSeq++;
+					continue;
+				}
+
+				// indicate that this stored edge points are not edge of a closed contour, clear this useless stored data
+				/*for (j = 0; j < p_contours->num[contourSeq]; ++j)
+				{
+					p_contours->p_coords[i - j].x = 0;
+					p_contours->p_coords[i].y = 0;
+				}*/
+				i -= p_contours->num[contourSeq];
+				p_contours->num[contourSeq] = 0;
+
+				// clear the starting point
+				p_img[y * w + x] = 0;
+
+				continue;
+			}
+
+			if (searchTime > 8)
+				continue;
+
+			// if this stored edge are of a closed contour, go to store another contour.
+			contourSeq++;
+		}
+	}
+
+	return contourSeq;
+}
+
+
+void markMaxOutContour(unsigned char* p_img, Contour* p_contours, unsigned int contourNum, unsigned short w, unsigned short h)
+{
+	unsigned int c = 0;
+	unsigned int maxLen = 0;
+	unsigned int cMax = 0;
+	unsigned int i = 0;
+
+	for (c = 0; c < contourNum; ++c)
+	{
+		if (p_contours->num[c] > maxLen)
+		{
+			maxLen = p_contours->num[c];
+			cMax = c;
+		}
+	}
+
+	for (i = 0; i < maxLen; ++i)
+	{
+		p_img[p_contours->p_coords[i].y * w + p_contours->p_coords[i].x] = 255;
+	}
+}
+
+
+void fillRegion(unsigned char* p_img, unsigned short w, unsigned short h)
+{
+	unsigned short x = 0;
+	unsigned short y = 0;
+	unsigned int pos = 0;
+	unsigned int t_pos = 0;
+	unsigned int posLeft = 0;
+	unsigned int posRight = 0;
+	unsigned char posLeftFound = 0;
+	unsigned char posRightFound = 0;
+
+	for (y = 1; y < h - 1; ++y)
+	{
+		posLeftFound = 0;
+		posRightFound = 0;
+
+		for (x = 1; x < w - 1; ++x)
+		{
+			pos = y * w + x;
+			
+			if (p_img[pos] == 0)
+				continue;
+
+			if (!posLeftFound && !posRightFound)
+			{
+				while (p_img[pos + 1] != 0)
+				{
+					pos++;
+					x++;
+				}
+
+				if (p_img[pos - w - 1] != 0 || p_img[pos - w] != 0 || p_img[pos - w + 1] != 0
+					|| p_img[pos - 1] != 0
+					|| p_img[pos + w - 1] != 0 || p_img[pos + w] != 0 || p_img[pos + w + 1] != 0)
+				{
+					posLeftFound = 1;
+					posLeft = pos;
+				}
+			}
+			else if (posLeftFound)
+			{
+				if (p_img[pos - w - 1] != 0 || p_img[pos - w] != 0 || p_img[pos - w + 1] != 0
+					|| p_img[pos - 1] != 0 || p_img[pos + 1] != 0
+					|| p_img[pos + w - 1] != 0 || p_img[pos + w] != 0 || p_img[pos + w + 1] != 0)
+				{
+					posLeftFound = 0;
+					posRightFound = 1;
+					posRight = pos;
+					for (t_pos = posLeft + 1; t_pos < posRight; ++t_pos)
+					{
+						p_img[t_pos] = 255;
+					}
+
+					while (p_img[pos + 1] != 0)
+					{
+						x++;
+						pos++;
+					}
+					x--;
+					posRightFound = 0;
+				}
+			}
+		}
+	}
+}
+
+
+void seedFillRegion(unsigned char* p_img, unsigned short w, unsigned short h)
+{
+	
+}
+
+
+int markMaxConnRegion(unsigned char* p_img, unsigned short w, unsigned short h)
+{
+	int i = 0; 
+	int count = 0;
+
+	for (i = 0; i < w * h; ++i)
+	{
+		if (p_img[i] != 0)
+			count++;
+	}
+
+	return count;
 }

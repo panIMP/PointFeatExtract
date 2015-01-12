@@ -157,7 +157,7 @@ unsigned int getPointsLocations(InterestPoint* p_points, unsigned char* p_markIm
 void wipeOutBoudaryPixel(InterestPoint* p_points, unsigned int* p_pointNum, unsigned short r, unsigned short w, unsigned short h);
 
 // calculate the feature of one interest point
-void calcFeat(InterestPoint* p_point, const unsigned char* p_img, coord* p_coords, unsigned int neighPointNum, unsigned short w);
+void calcFeat(InterestPoint* p_point, const unsigned char* p_img, Coord* p_coords, unsigned int neighPointNum, unsigned short w);
 
 // calculate the features of all the located interest points
 void getPointsFeats(InterestPoint* p_points, unsigned int pointNum, const unsigned char *p_img, unsigned short r, unsigned short w);
