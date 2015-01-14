@@ -52,6 +52,41 @@ const Filter g_filts[LAYER_NUM] =
 		3, 4, 0, 16, 6, 91, 1, 4, 7, 16, 13, 91, -2, 4, 14, 16, 20, 91, 1, 0, 0, 0, 0, 0, 0,
 		4, 3, 3, 9, 9, 49, 1, 11, 3, 17, 9, 49, -1, 3, 11, 9, 17, 49, -1, 11, 11, 17, 17, 49, 1,
 	},
+
+/*	// 3rd layer -- box size: 27 * 27
+	{
+		3, 0, 5, 8, 21, 153, 1, 9, 5, 17, 21, 153, -2, 18, 5, 26, 21, 153, 1, 0, 0, 0, 0, 0, 0,
+		3, 5, 0, 21, 8, 153, 1, 5, 9, 21, 17, 153, -2, 5, 18, 21, 26, 153, 1, 0, 0, 0, 0, 0, 0,
+		4, 4, 4, 12, 12, 81, 1, 14, 4, 22, 12, 81, -1, 4, 14, 12, 22, 81, -1, 14, 14, 22, 22, 81, 1,
+	},
+
+	// 4th layer -- box size: 39 * 39
+	{
+		3, 0, 7, 12, 31, 325, 1, 13, 7, 25, 31, 325, -2, 26, 7, 38, 31, 325, 1, 0, 0, 0, 0, 0, 0,
+		3, 7, 0, 31, 12, 325, 1, 7, 13, 31, 25, 325, -2, 7, 26, 31, 38, 325, 1, 0, 0, 0, 0, 0, 0,
+		4, 6, 6, 18, 18, 169, 1, 20, 6, 32, 18, 169, -1, 6, 20, 18, 32, 169, -1, 20, 20, 32, 32, 169, 1,
+	},
+
+	// 5th layer -- box size: 51 * 51
+	{
+		3, 0, 9, 16, 41, 561, 1, 17, 9, 33, 41, 561, -2, 34, 9, 50, 41, 561, 1, 0, 0, 0, 0, 0, 0,
+		3, 9, 0, 41, 16, 561, 1, 9, 17, 41, 33, 561, -2, 9, 34, 41, 50, 561, 1, 0, 0, 0, 0, 0, 0,
+		4, 8, 8, 24, 24, 289, 1, 26, 8, 42, 24, 289, -1, 8, 26, 24, 42, 289, -1, 26, 26, 42, 42, 289, 1,
+	},
+
+	// 6th layer -- box size: 75 * 75
+	{
+		3, 0, 13, 24, 61, 1225, 1, 25, 13, 49, 61, 1225, -2, 50, 13, 74, 61, 1225, 1, 0, 0, 0, 0, 0, 0,
+		3, 13, 0, 61, 24, 1225, 1, 13, 25, 61, 49, 1225, -2, 13, 50, 61, 74, 1225, 1, 0, 0, 0, 0, 0, 0,
+		4, 12, 12, 36, 36, 625, 1, 38, 12, 62, 36, 625, -1, 12, 38, 36, 62, 625, -1, 38, 38, 62, 62, 625, 1,
+	},
+
+	// 7th player -- box size: 99 * 99
+	{
+		3, 0, 17, 32, 81, 2145, 1, 33, 17, 65, 81, 2145, -2, 66, 17, 98, 81, 2145, 1, 0, 0, 0, 0, 0, 0,
+		3, 17, 0, 81, 32, 2145, 1, 17, 33, 81, 65, 2145, -2, 17, 66, 81, 98, 2145, 1, 0, 0, 0, 0, 0, 0,
+		4, 16, 16, 48, 48, 1089, 1, 50, 16, 82, 48, 1089, -1, 16, 50, 48, 82, 1089, -1, 50, 50, 82, 82, 1089, 1,
+	}*/
 };
 
 const unsigned char g_upOffset[] = { 0, 1, 1, 1, 1, 1, 1, 0 };
@@ -134,7 +169,7 @@ void calcDetHes(const FilterPtrs *p_filterPtrs, const Filter* p_filter, hesMat* 
 }
 
 // create the det(Hessin) image of the input integral image at one specific octave and layer
-void createDetHesImg(unsigned int *p_integImg, hesMat* p_detHesImg, unsigned short layOrder, unsigned short w, unsigned short h)
+void createDetHesImg(unsigned int *p_integImg, hesMat* p_detHesImg, const unsigned char* p_markImg, unsigned short layOrder, unsigned short w, unsigned short h)
 {
 	if (p_integImg == NULL || p_detHesImg == NULL)
 	{
@@ -165,13 +200,16 @@ void createDetHesImg(unsigned int *p_integImg, hesMat* p_detHesImg, unsigned sho
 
 		for (unsigned short x = stX; x < enX; ++x, ++t_p_detHesImg, incFilterPtrs(&t_filterPtrs, 1))
 		{
+			//if (p_markImg[y * w + x] != SHOULDMARK)
+			//	continue;
+
 			calcDetHes(&t_filterPtrs, p_filter, t_p_detHesImg);
 		}
 	}
 }
 
 // create the det(Hessin) image pyramid of certain number of octaves and layers
-double createDetHesImgPyr(hesMat *p_detHesImgPyr, unsigned int *p_integImg, unsigned short layNum, unsigned short w, unsigned short h)
+double createDetHesImgPyr(hesMat *p_detHesImgPyr, unsigned int *p_integImg, const unsigned char* p_markImg, unsigned short layNum, unsigned short w, unsigned short h)
 {
 	if (p_integImg == NULL)
 	{
@@ -187,7 +225,7 @@ double createDetHesImgPyr(hesMat *p_detHesImgPyr, unsigned int *p_integImg, unsi
 	for (unsigned short layOrder = 0; layOrder < layNum; ++layOrder)
 	{
 		//time_t start = clock();
-		createDetHesImg(p_integImg, t_p_detHesImgPyr, layOrder, w, h);
+		createDetHesImg(p_integImg, t_p_detHesImgPyr, p_markImg, layOrder, w, h);
 		//time_t end = clock();
 		//cout << "Time for one layer of detHes image: " << end - start << endl;
 
@@ -710,7 +748,7 @@ ProjectMat getProjMatByRansac(const PointPair *p_pairs, unsigned int pairNum, do
 	// projection matrix coefficiency
 	ProjectMat curMat, suitMat;
 
-	unsigned int iterateNum = 10 * pairNum;
+	unsigned int iterateNum = 100 * pairNum;
 	double** matSrc = NULL;
 	mallocMat(&matSrc, 3, 3);
 	double** matDst = NULL;
@@ -808,13 +846,9 @@ ProjectMat matchInterestPoints(InterestPoint *p_pointsL, int pointNumL, Interest
 	ProjectMat mat;
 
 	double** matCovarInv = NULL;
-
-	// step 0: normalize all these feats
-	normalizePointsFeats(p_pointsL, pointNumL, p_pointsR, pointNumR);
-
-#ifdef _MAHA_DIST_
 	double** matXs = NULL;
 	double** matCovar = NULL;
+
 	int pointTotalNum = pointNumL + pointNumR;
 	if (callocMat(&matXs, pointTotalNum, FEAT_NUM) < 0)
 		exit(-1);
@@ -823,6 +857,10 @@ ProjectMat matchInterestPoints(InterestPoint *p_pointsL, int pointNumL, Interest
 	if (callocMat(&matCovarInv, FEAT_NUM, FEAT_NUM) < 0)
 		exit(-1);
 
+	// step 0: normalize all these feats
+	normalizePointsFeats(p_pointsL, pointNumL, p_pointsR, pointNumR);
+
+#ifdef _MAHA_DIST_
 	for (int p = 0; p < pointNumL; ++p)
 	{
 		for (int f = 0; f < FEAT_NUM; ++f)
@@ -846,13 +884,6 @@ ProjectMat matchInterestPoints(InterestPoint *p_pointsL, int pointNumL, Interest
 		exit(-1);
 	time_t end = clock();
 	cout << "time for calculating mat covar: " << end - start << endl;
-
-	free(matXs);
-	matXs = NULL;
-	free(matCovar);
-	matCovar = NULL;
-	free(matCovarInv);
-	matCovarInv = NULL;
 #endif
 
 	// step 1: rough match based on mutual-minimum-distance
@@ -866,6 +897,14 @@ ProjectMat matchInterestPoints(InterestPoint *p_pointsL, int pointNumL, Interest
 	//clock_t end = clock();
 	//cout << "ransac time: " << end - start << endl;
 #endif
+
+
+	free(matXs);
+	matXs = NULL;
+	free(matCovar);
+	matCovar = NULL;
+	free(matCovarInv);
+	matCovarInv = NULL;
 
 	return mat;
 }

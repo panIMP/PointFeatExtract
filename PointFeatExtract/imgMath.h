@@ -35,9 +35,15 @@ void canny(unsigned char* p_img, unsigned short w, unsigned short h);
 
 unsigned char otsu(unsigned char* p_img, unsigned short w, unsigned short h);
 
+void setBoundaryZero(unsigned char* p_img, unsigned short w, unsigned short h);
+
 void binary(unsigned char* p_img, unsigned char thresh, unsigned char maxVal, unsigned short w, unsigned short h);
 
 void otsuBinary(unsigned char* p_img, unsigned char maxVal, unsigned short w, unsigned short h);
+
+unsigned char threshByTriangularFoot(unsigned char* p_img, unsigned short w, unsigned short h);
+
+unsigned char threshByFirstVally(unsigned char* p_img, unsigned short w, unsigned short h);
 
 unsigned char otsuOfRegion(unsigned char* p_img, unsigned short w, unsigned short h, unsigned short wBig);
 
@@ -55,12 +61,14 @@ void subtract(unsigned char* p_img, unsigned char* p_imgSub, unsigned short w, u
 
 void equHist(unsigned char* p_img, unsigned char* p_markImg, unsigned short w, unsigned short h);
 
-void fillRegion(unsigned char* p_img, unsigned short w, unsigned short h);
+int fillRegion(unsigned char* p_img, unsigned short w, unsigned short h, unsigned char maxVal);
 
 void seedFillRegion(unsigned char* p_img, unsigned short w, unsigned short h);
 
 int markOutContour(unsigned char* p_img, Contour* p_contours, unsigned short w, unsigned short h);
 
 void markMaxOutContour(unsigned char* p_img, Contour* p_contours, unsigned int contourNum, unsigned short w, unsigned short h);
+
+int preProcess(unsigned char* p_img, unsigned char* p_markImg, unsigned char maxVal, unsigned short w, unsigned short h);
 
 #endif // IMGMATH_H

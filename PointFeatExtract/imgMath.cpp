@@ -2,7 +2,8 @@
 #include "Error/error.h"
 #include <malloc.h>
 #include <math.h>
-
+#include <stdlib.h>
+#include <string.h>
 
 void sobel(unsigned char* imageData, unsigned short width, unsigned short height)
 {
@@ -21,18 +22,11 @@ void sobel(unsigned char* imageData, unsigned short width, unsigned short height
 	int tranSize = width * (height - 2) - 2;
 
 	// Bond output
-	unsigned char* out = imageData;
+	int* out =(int*)malloc_check(fullSize * sizeof(int));
+	int maxVal = 0;
 
 	// Copy init data
-	unsigned char* in = (unsigned char*)malloc(fullSize * sizeof(unsigned char));
-	if (in == NULL) {
-		printf("Melmory allocation failed in sobel!");
-		exit(1);
-	}
-	for (i = 0; i < fullSize; ++i) {
-		*in++ = *imageData++;
-	}
-	in = in - fullSize;
+	unsigned char* in = imageData;
 
 	// Init 8-neighbour pointers
 	pI00 = in;					pI01 = in + 1;					pI02 = in + 2;
@@ -61,14 +55,26 @@ void sobel(unsigned char* imageData, unsigned short width, unsigned short height
 
 		// Clamp to 8-bit range.  The output is always positive due to
 		// the absolute value, so we only need to check for overflow.
-		if (O > 255) O = 255;
+		if (O > maxVal)
+			maxVal = O;
 
 		// Store it.
 		out[i + 1 + width] = O;
 	}
 
+	for (i = 0; i < fullSize; ++i)
+	{
+		out[i] = (out[i] * 255) / (double)maxVal;
+	}
+
+	for (i = 0; i < fullSize; ++i)
+	{
+		in[i] = out[i];
+	}
+
+
 	// free intermediate copy image
-	free(in);
+	free(out);
 }
 
 void gaussin(unsigned char* imageData, unsigned short w, unsigned short h)
@@ -209,7 +215,20 @@ unsigned int calcDiskTmplArray(Coord* p_coord, unsigned short r)
 	return count;
 }
 
+void setBoundaryZero(unsigned char* p_img, unsigned short w, unsigned short h)
+{
+	for (int x = 0; x < w; ++x)
+	{
+		p_img[x] = 0;
+		p_img[(h - 1) * w + x] = 0;
+	}
 
+	for (int y = 0; y < h; ++y)
+	{
+		p_img[y * w] = 0;
+		p_img[y * w + w - 1] = 0;
+	}
+}
 
 unsigned char otsu(unsigned char* p_img, unsigned short w, unsigned short h)
 {
@@ -268,6 +287,76 @@ unsigned char otsu(unsigned char* p_img, unsigned short w, unsigned short h)
 		}
 	}
 
+	return thresh;
+}
+
+
+unsigned char threshByFirstVally(unsigned char* p_img, unsigned short w, unsigned short h)
+{
+	unsigned int i = 0;
+	unsigned int sum = w * h;
+	unsigned char dixVal = 0;
+	unsigned int maxFreq = 0;
+
+	// get histogram
+	unsigned int hist[256] = { 0 };
+
+	for (i = 0; i < sum; ++i)
+	{
+		hist[p_img[i]] ++;
+	}
+
+	for (i = 0; i < 255; ++i)
+	{
+		if (hist[i] > maxFreq)
+		{
+			maxFreq = hist[i];
+			dixVal = i;
+		}
+	}
+
+	i = dixVal;
+	while (hist[i + 1] < hist[i] && i < 256)
+	{
+		i++;
+	}
+
+	return i;
+}
+
+
+unsigned char threshByTriangularFoot(unsigned char* p_img, unsigned short w, unsigned short h)
+{
+	unsigned int i = 0;
+	unsigned int sum = w * h;
+	unsigned char dixVal = 0;
+	unsigned int maxFreq = 0;
+	unsigned char a = 0;
+	unsigned char b = 0;
+	unsigned char thresh = 0;
+
+	// get histogram
+	unsigned int hist[256] = { 0 };
+	
+	for (i = 0; i < sum; ++i)
+	{
+		hist[p_img[i]] ++;
+	}
+	
+	for (i = 0; i < 255; ++i)
+	{
+		if (hist[i] > maxFreq)
+		{
+			maxFreq = hist[i];
+			dixVal = i;
+		}
+	}
+
+	a = maxFreq;
+	b = 255 - dixVal;
+	thresh = (unsigned int)(a * a * b) / (unsigned int)(a * a + b * b);
+	thresh += dixVal;
+	
 	return thresh;
 }
 
@@ -573,7 +662,7 @@ void localOtsuRecurBinary(unsigned char* p_img, unsigned char maxVal, unsigned s
 		}
 	}
 
-	thresh += 1;
+	//thresh += 1;
 	for (i = 0; i < sum; ++i)
 	{
 		if (p_img[i] > thresh)
@@ -731,9 +820,9 @@ int markOutContour(unsigned char* p_img, Contour* p_contours, unsigned short w, 
 	unsigned int i = 0;
 	unsigned int j = 0;
 
-	for (y = 1; y < h; ++y)
+	for (y = 1; y < h-1; ++y)
 	{
-		for (x = 1; x < w; ++x)
+		for (x = 1; x < w-1; ++x)
 		{
 			if (p_img[y * w + x] == 0)
 				continue;
@@ -746,7 +835,7 @@ int markOutContour(unsigned char* p_img, Contour* p_contours, unsigned short w, 
 			offsetSeq = 0;
 			p_contours->num[contourSeq] = 0;
 
-			while ((xCur != xStart || yCur != yStart) || atStartPos)
+			while ((xCur != xStart || yCur != yStart || atStartPos) && (xCur > 1 && xCur < w -1 && yCur > 1 && yCur < h - 1))
 			{
 				atStartPos = 0;
 
@@ -773,8 +862,8 @@ int markOutContour(unsigned char* p_img, Contour* p_contours, unsigned short w, 
 					break;
 				}
 
+				// add the newly founded point into the "contour"
 				p_img[yTmp * w + xTmp] = 0;
-
 				p_contours->p_coords[i].x = xTmp;
 				p_contours->p_coords[i].y = yTmp;
 				p_contours->num[contourSeq]++;
@@ -790,18 +879,13 @@ int markOutContour(unsigned char* p_img, Contour* p_contours, unsigned short w, 
 			if (xCur != xStart || yCur != yStart || p_contours->num[contourSeq] <= 3)
 			{
 				// if there is only one pixel size gap between starting point and ending point, tolerate it to be a closed contour
-				if (abs(xCur - xStart) < 3 && abs(yCur - yStart) < 3 && p_contours->num[contourSeq] > 3)
+				/*if (abs(xCur - xStart) < 3 && abs(yCur - yStart) < 3 && p_contours->num[contourSeq] > 3)
 				{
 					contourSeq++;
 					continue;
-				}
+				}*/
 
 				// indicate that this stored edge points are not edge of a closed contour, clear this useless stored data
-				/*for (j = 0; j < p_contours->num[contourSeq]; ++j)
-				{
-					p_contours->p_coords[i - j].x = 0;
-					p_contours->p_coords[i].y = 0;
-				}*/
 				i -= p_contours->num[contourSeq];
 				p_contours->num[contourSeq] = 0;
 
@@ -846,7 +930,7 @@ void markMaxOutContour(unsigned char* p_img, Contour* p_contours, unsigned int c
 }
 
 
-void fillRegion(unsigned char* p_img, unsigned short w, unsigned short h)
+int fillRegion(unsigned char* p_img, unsigned short w, unsigned short h, unsigned char maxVal)
 {
 	unsigned short x = 0;
 	unsigned short y = 0;
@@ -856,6 +940,7 @@ void fillRegion(unsigned char* p_img, unsigned short w, unsigned short h)
 	unsigned int posRight = 0;
 	unsigned char posLeftFound = 0;
 	unsigned char posRightFound = 0;
+	unsigned int count = 0;
 
 	for (y = 1; y < h - 1; ++y)
 	{
@@ -896,7 +981,7 @@ void fillRegion(unsigned char* p_img, unsigned short w, unsigned short h)
 					posRight = pos;
 					for (t_pos = posLeft + 1; t_pos < posRight; ++t_pos)
 					{
-						p_img[t_pos] = 255;
+						p_img[t_pos] = maxVal;
 					}
 
 					while (p_img[pos + 1] != 0)
@@ -910,6 +995,14 @@ void fillRegion(unsigned char* p_img, unsigned short w, unsigned short h)
 			}
 		}
 	}
+
+	for (pos = 0; pos < w * h; ++pos)
+	{
+		if (p_img[pos] != 0)
+			count++;
+	}
+
+	return count;
 }
 
 
@@ -931,4 +1024,35 @@ int markMaxConnRegion(unsigned char* p_img, unsigned short w, unsigned short h)
 	}
 
 	return count;
+}
+
+
+int preProcess(unsigned char* p_img, unsigned char* p_markImg, unsigned char maxVal, unsigned short w, unsigned short h)
+{
+	int preArea = 0;
+	gaussin(p_img, w, h);
+
+	memcpy(p_markImg, p_img, w * h);
+
+	binary(p_markImg, threshByFirstVally(p_markImg, w, h), maxVal, w, h);
+
+	setBoundaryZero(p_markImg, w, h);
+	unsigned char* p_tmpImg = (unsigned char*)malloc_check(w * h);
+	memcpy(p_tmpImg, p_markImg, w * h);
+	elate(p_tmpImg, p_markImg, w, h);
+	subtract(p_markImg, p_tmpImg, w, h);
+
+	Contour contours;
+	contours.p_coords = (Coord*)malloc_check(w * h * sizeof(Coord));
+	int contourNum = markOutContour(p_markImg, &contours, w, h);
+	markMaxOutContour(p_markImg, &contours, contourNum, w, h);
+	preArea = fillRegion(p_markImg, w, h, maxVal);
+	equHist(p_img, p_markImg, w, h);
+
+	free(p_tmpImg);
+	p_tmpImg = NULL;
+	free(contours.p_coords);
+	contours.p_coords = NULL;
+
+	return preArea;
 }

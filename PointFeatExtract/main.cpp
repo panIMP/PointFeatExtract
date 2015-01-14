@@ -20,7 +20,8 @@ int main()
 {
 	// ============================================================================================================================
 	// left image
-	cv::Mat_<cv::Vec3b> matLColor = cv::imread(string("G:/xiangmu/Pictures/juanbidao/src/juanbidao1.bmp"), cv::IMREAD_COLOR);
+	//cv::Mat_<cv::Vec3b> matLColor = cv::imread(string("G:/xiangmu/Pictures/jiong/pos/1.bmp"), cv::IMREAD_COLOR);
+	cv::Mat_<cv::Vec3b> matLColor = cv::imread(string("G:/xiangmu/Pictures/juanbidao/pos/juanbidao14.bmp"), cv::IMREAD_COLOR);
 	//cv::Mat_<cv::Vec3b> matLColor = cv::imread(string("G:/xiangmu/Pictures/ykq/src/1.bmp"), cv::IMREAD_COLOR);
 	//cv::Mat_<cv::Vec3b> matLColor = cv::imread(string("G:/xiangmu/Pictures/gongjian/1.bmp"), cv::IMREAD_COLOR);
 	//cv::Mat_<cv::Vec3b> matLColor = cv::imread(string("G:/xiangmu/Pictures/Dolls/Illum1/Exp1/view0.png"), cv::IMREAD_COLOR);
@@ -28,8 +29,9 @@ int main()
 	//cv::Mat_<cv::Vec3b> matLColor = cv::imread(string("G:/xiangmu/Pictures/sift/box.pgm"), cv::IMREAD_COLOR);
 
 	// right image
-	cv::Mat_<cv::Vec3b> matRColor = cv::imread(string("G:/xiangmu/Pictures/juanbidao/guangzhao/juanbidao6.bmp"), cv::IMREAD_COLOR);
-	//cv::Mat_<cv::Vec3b> matRColor = cv::imread(string("G:/xiangmu/Pictures/ykq/pos/8.bmp"), cv::IMREAD_COLOR);
+	//cv::Mat_<cv::Vec3b> matRColor = cv::imread(string("G:/xiangmu/Pictures/jiong/pos/3.bmp"), cv::IMREAD_COLOR);
+	cv::Mat_<cv::Vec3b> matRColor = cv::imread(string("G:/xiangmu/Pictures/juanbidao/pos/juanbidao21.bmp"), cv::IMREAD_COLOR);
+	//cv::Mat_<cv::Vec3b> matRColor = cv::imread(string("G:/xiangmu/Pictures/ykq/pos/2.bmp"), cv::IMREAD_COLOR);
 	//cv::Mat_<cv::Vec3b> matRColor = cv::imread(string("G:/xiangmu/Pictures/gongjian/7.bmp"), cv::IMREAD_COLOR);
 	//cv::Mat_<cv::Vec3b> matRColor = cv::imread(string("G:/xiangmu/Pictures/Dolls/Illum1/Exp1/view6.png"), cv::IMREAD_COLOR);
 	//cv::Mat_<cv::Vec3b> matRColor = cv::imread(string("G:/xiangmu/Pictures/grap/img3.ppm"), cv::IMREAD_COLOR);
@@ -68,33 +70,32 @@ int main()
 	unsigned char* p_imgL = matL.data;
 	unsigned short wL = matL.cols;
 	unsigned short hL = matL.rows;
-	gaussin(p_imgL, wL, hL);
+	unsigned int areaL = wL * hL;
 
 	cv::Mat_<unsigned char> matR;
 	cv::cvtColor(matRColor, matR, CV_BGR2GRAY);
 	unsigned char* p_imgR = matR.data;
 	unsigned short wR = matR.cols;
 	unsigned short hR = matR.rows;
-	gaussin(p_imgR, wR, hR);
+	unsigned int areaR = wR * hR;
 
-#ifdef _EQU_HIST_FOR_PRE_
-	cv::Mat_<unsigned char> t_matL(wL, hL);
-	matL.copyTo(t_matL);
-	localOtsuRecurBinary(t_matL.data, SHOULDMARK, wL, hL, 4);
-	int areaL = markMaxConnRegion(t_matL.data, wL, hL);
-	equHist(p_imgL, t_matL.data, wL, hL);
-	cv::imshow("t_matL", t_matL);
-
-	cv::Mat_<unsigned char> t_matR(wR, hR);
-	matR.copyTo(t_matR);
-	localOtsuRecurBinary(t_matR.data, SHOULDMARK, wR, hR, 4);
-	int areaR = markMaxConnRegion(t_matR.data, wR, hR);
-	equHist(p_imgR, t_matR.data, wR, hR);
-	cv::imshow("t_matR", t_matR);
-#endif
+	cv::Mat_<unsigned char> t_matL(hL, wL);
+	cv::Mat_<unsigned char> t_matR(hR, wR);
+	memset(t_matL.data, SHOULDMARK, wL * hL);
+	memset(t_matR.data, SHOULDMARK, wR * hR);
 
 	cv::imshow("matL", matL);
 	cv::imshow("matR", matR);
+
+#ifdef _PRE_PROCESS_
+	areaL = preProcess(matL.data, t_matL.data, SHOULDMARK, wL, hL);
+	cv::imshow("t_matL", t_matL);
+	cv::imwrite("C:/t_matL.png", t_matL);
+
+	areaR = preProcess(matR.data, t_matR.data, SHOULDMARK, wR, hR);
+	cv::imshow("t_matR", t_matR);
+	cv::imwrite("C:/t_matR.png", t_matR);
+#endif
 
 	// ==============================================================================================================================
 	// create the integrate image of the left image
@@ -102,7 +103,7 @@ int main()
 
 	// create the det(Hessin) images of different octaves and layers of the left image
 	hesMat* p_detHesImgPyrL = (hesMat*)calloc_check(LAYER_NUM * wL * hL, sizeof(hesMat));
-	createDetHesImgPyr(p_detHesImgPyrL, p_integImgL, LAYER_NUM, wL, hL);
+	createDetHesImgPyr(p_detHesImgPyrL, p_integImgL, t_matL.data, LAYER_NUM, wL, hL);
 
 	// locate the interest points in the pyramid of the left image
 	InterestPoint* p_pointsL = (InterestPoint*)calloc_check(wL * hL, sizeof(InterestPoint));
@@ -114,7 +115,7 @@ int main()
 
 	// create the det(Hessin) images of different octaves and layers of the right image
 	hesMat* p_detHesImgPyrR = (hesMat*)calloc_check(LAYER_NUM * wR * hR, sizeof(hesMat));
-	createDetHesImgPyr(p_detHesImgPyrR, p_integImgR, LAYER_NUM, wR, hR);
+	createDetHesImgPyr(p_detHesImgPyrR, p_integImgR, t_matL.data, LAYER_NUM, wR, hR);
 
 	// locate the interest points in the pyramid of the right image
 	InterestPoint* p_pointsR = (InterestPoint*)calloc_check(wR * hR, sizeof(InterestPoint));
@@ -122,8 +123,8 @@ int main()
 
 	// ==============================================================================================================================
 	double dR = (double)(areaR) / (double)pointNumR;
-	//dR = (double)(wR * hR) / (double)pointNumR;
 	unsigned short r = sqrt(dR) / 2;
+	r = 16;
 	double dThresh = dR / 4;
 	
 	wipeOutBoudaryPixel(p_pointsL, &pointNumL, r, wL, hL);
@@ -135,8 +136,10 @@ int main()
 	getPointsFeats(p_pointsR, pointNumR, p_imgR, r, wR);
 
 	// show compare point location result
-	drawRect(matLColor, p_pointsL, pointNumL, 1, r, cv::Scalar(255, 255, 255));
-	drawRect(matRColor, p_pointsR, pointNumR, 1, r, cv::Scalar(255, 255, 255));
+	cv::cvtColor(matL, matLColor, cv::COLOR_GRAY2BGR);
+	cv::cvtColor(matR, matRColor, cv::COLOR_GRAY2BGR);
+	drawRect(matLColor, p_pointsL, pointNumL, 1, 2, cv::Scalar(255, 255, 255));
+	drawRect(matRColor, p_pointsR, pointNumR, 1, 2, cv::Scalar(255, 255, 255));
 
 	// ==============================================================================================================================
 	// match the two images
@@ -163,68 +166,81 @@ int main()
 #endif
 
 
-#ifdef _BINARY_
 
+#ifdef _BINARY_
 int main()
 {
 	// left image
-	cv::Mat_<cv::Vec3b> matLColor = cv::imread(string("G:/xiangmu/Pictures/juanbidao/guangzhao/juanbidao1.bmp"), cv::IMREAD_COLOR);
+	//cv::Mat_<cv::Vec3b> matLColor = cv::imread(string("G:/xiangmu/Pictures/jiong/pos/1.bmp"), cv::IMREAD_COLOR);
+	cv::Mat_<cv::Vec3b> matLColor = cv::imread(string("G:/xiangmu/Pictures/juanbidao/guangzhao/juanbidao5.bmp"), cv::IMREAD_COLOR);
 	//cv::Mat_<cv::Vec3b> matLColor = cv::imread(string("G:/xiangmu/Pictures/gongjian/1.bmp"), cv::IMREAD_COLOR);
 	//cv::Mat_<cv::Vec3b> matLColor = cv::imread(string("G:/xiangmu/Pictures/ykq/src/1.bmp"), cv::IMREAD_COLOR);
 
 	cv::Mat_<unsigned char> matL;
 	cv::cvtColor(matLColor, matL, CV_BGR2GRAY);
 	unsigned char* p_imgL = matL.data;
-	unsigned short wL = matL.cols;
-	unsigned short hL = matL.rows;
-	cv::Mat_<unsigned char> mat0(wL, hL);
-	cv::Mat_<unsigned char> mat1(wL, hL);
-	cv::Mat_<unsigned char> mat2(wL, hL);
-	cv::Mat_<unsigned char> mat3(wL, hL);
-	cv::Mat_<unsigned char> mat3Edge(wL, hL);
+	unsigned short w = matL.cols;
+	unsigned short h = matL.rows;
+	cv::Mat_<unsigned char> mat0(h, w);
+	cv::Mat_<unsigned char> mat1(h, w);
+	cv::Mat_<unsigned char> mat2(h, w);
+	cv::Mat_<unsigned char> mat3(h, w);
+	cv::Mat_<unsigned char> mat4(h, w);
 
-	gaussin(p_imgL, wL, hL);
+	gaussin(p_imgL, w, h);
 
 	matL.copyTo(mat0);
 	matL.copyTo(mat1);
 	matL.copyTo(mat2);
 	matL.copyTo(mat3);
+	matL.copyTo(mat4);
 
 	cv::imshow("src", matL);
+	cv::imwrite("C:/src.png", matL);
 
 	cv::threshold(mat0, mat0, 0, 255, cv::THRESH_OTSU);
 	cv::imshow("opencv global otsu", mat0);
+	cv::imwrite("C:/opencv_global_otsu.png", mat0);
 
-	otsuBinary(mat1.data, 255, wL, hL);
+	otsuBinary(mat1.data, 255, w, h);
 	cv::imshow("global otsu", mat1);
+	cv::imwrite("C:/global_otsu.png", mat1);
 
-	localOtsuBinary(mat2.data, 255, wL, hL, 4);
+	localOtsuBinary(mat2.data, 255, w, h, 4);
 	cv::imshow("local otsu", mat2);
+	cv::imwrite("C:/local_otsu.png", mat2);
 
-	localOtsuRecurBinary(mat3.data, 255, wL, hL, 4);
+	localOtsuRecurBinary(mat3.data, 255, w, h, 4);
 	cv::imshow("local recur otsu", mat3);
+	cv::imwrite("C:/local_recur_otsu.png", mat3);
+
+	binary(mat4.data, threshByFirstVally(mat4.data, w, h), 255, w, h);
+	cv::imshow("thresh by triangular", mat4);
+	cv::imwrite("thresh_by_triangular.png", mat4);
 	
-	mat3.copyTo(mat3Edge);
-	erode(mat3.data, mat3Edge.data, wL, hL);
-	subtract(mat3.data, mat3Edge.data, wL, hL);
-	cv::imshow("edge", mat3);
-	cv::imwrite("C:/edge.png", mat3);
+	setBoundaryZero(mat4.data, w, h);
+	cv::Mat_<unsigned char> mat4Edge(w, h);
+	mat4.copyTo(mat4Edge);
+	elate(mat4Edge.data, mat4.data, w, h);
+	subtract(mat4.data, mat4Edge.data, w, h);
+	cv::imshow("edge", mat4);
+	cv::imwrite("C:/edge.png", mat4);
 
 	Contour contours;
-	contours.p_coords = (Coord*)malloc_check(mat3.cols * mat3.rows * sizeof(Coord));
-	int contourNum = markOutContour(mat3.data, &contours, mat3.cols, mat3.rows);
-	markMaxOutContour(mat3.data, &contours, contourNum, mat3.cols, mat3.rows);
-	cv::imshow("biggestEdge", mat3);
-	cv::imwrite("C:/biggestEdge.png", mat3);
+	contours.p_coords = (Coord*)malloc_check(mat4.cols * mat4.rows * sizeof(Coord));
+	int contourNum = markOutContour(mat4.data, &contours, mat4.cols, mat4.rows);
+	markMaxOutContour(mat4.data, &contours, contourNum, mat4.cols, mat4.rows);
+	cv::imshow("biggestEdge", mat4);
+	cv::imwrite("C:/biggestEdge.png", mat4);
 
-	fillRegion(mat3.data, wL, hL);
-	//cv::floodFill(mat3, cv::Point(347, 118), 255);
-	cv::imshow("fill", mat3);
-	cv::imwrite("C:/fill.png", mat3);
+	fillRegion(mat4.data, w, h, 255);
+	//cv::floodFill(mat4, cv::Point(347, 118), 255);
+	cv::imshow("fill", mat4);
+	cv::imwrite("C:/fill.png", mat4);
 
-	equHist(matL.data, mat3.data, wL, hL);
+	equHist(matL.data, mat4.data, w, h);
 	cv::imshow("equalized", matL);
-	cv::imwrite("C:/equalized7.png", matL);
+	cv::imwrite("C:/equalized1.png", matL);
 
 	cv::waitKey(0);
 	return 0;

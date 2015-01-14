@@ -139,10 +139,10 @@ void incFilterPtrs(FilterPtrs* p_filterPtrs, unsigned short val);
 void calcDetHes(const FilterPtrs *p_filterPtrs, Filter* p_filter, hesMat* p_detHesImg);
 
 // create the det(Hessin) image of the input integral image at one specific octave and layer
-void createDetHesImg(unsigned int *p_integImg, hesMat* p_detHesImg, unsigned short layOrder, unsigned short w, unsigned short h);
+void createDetHesImg(unsigned int *p_integImg, hesMat* p_detHesImg, const unsigned char* p_markImg, unsigned short layOrder, unsigned short w, unsigned short h);
 
 // create the det(Hessin) image pyramid of certain number of octaves and layers
-double createDetHesImgPyr(hesMat *p_detHesImgPyr, unsigned int *p_integImg, unsigned short layNum, unsigned short w, unsigned short h);
+double createDetHesImgPyr(hesMat *p_detHesImgPyr, unsigned int *p_integImg, const unsigned char* p_markImg, unsigned short layNum, unsigned short w, unsigned short h);
 
 // find the interest point
 // returns 0: current pixel is not the regional maximum point
