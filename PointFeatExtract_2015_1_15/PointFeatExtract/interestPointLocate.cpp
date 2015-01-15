@@ -74,7 +74,7 @@ const Filter g_filts[LAYER_NUM] =
 		4, 8, 8, 24, 24, 289, 1, 26, 8, 42, 24, 289, -1, 8, 26, 24, 42, 289, -1, 26, 26, 42, 42, 289, 1,
 	},
 
-/*	// 6th layer -- box size: 75 * 75
+	// 6th layer -- box size: 75 * 75
 	{
 		3, 0, 13, 24, 61, 1225, 1, 25, 13, 49, 61, 1225, -2, 50, 13, 74, 61, 1225, 1, 0, 0, 0, 0, 0, 0,
 		3, 13, 0, 61, 24, 1225, 1, 13, 25, 61, 49, 1225, -2, 13, 50, 61, 74, 1225, 1, 0, 0, 0, 0, 0, 0,
@@ -91,7 +91,6 @@ const Filter g_filts[LAYER_NUM] =
 
 const unsigned char g_upOffset[] = { 0, 1, 1, 1, 1, 1, 1, 0 };
 const unsigned char g_downOffset[] = { 0, 1, 1, 2, 1, 2, 1, 0 };
-const double g_sigma[] = {1.2, 2, 2.8, 3.6, 5.2, 6.8,};
 
 // init the pointers of the four corners of each box of certain filter
 void initFiltPtrs(unsigned int *p_integImg, FilterPtrs* p_filterPtrs, const Filter* p_filter, unsigned short w)
@@ -140,7 +139,7 @@ void incFilterPtrs(FilterPtrs* p_filterPtrs, unsigned short val)
 }
 
 // calculate the det(Hessin) response of one pixel
-void calcDetHes(const FilterPtrs *p_filterPtrs, const Filter* p_filter, hesMat* p_detHesImg, unsigned char layerSeq)
+void calcDetHes(const FilterPtrs *p_filterPtrs, const Filter* p_filter, hesMat* p_detHesImg)
 {
 	if (p_filterPtrs == NULL || p_detHesImg == NULL)
 	{
@@ -162,11 +161,11 @@ void calcDetHes(const FilterPtrs *p_filterPtrs, const Filter* p_filter, hesMat* 
 		}
 	}
 
-	//p_detHesImg->dxx[layOrder] = deriVal[0];
-	//p_detHesImg->dyy[layOrder] = deriVal[1];
-	//p_detHesImg->dxy[layOrder] = deriVal[2];
+	p_detHesImg->dxx = deriVal[0];
+	p_detHesImg->dyy = deriVal[1];
+	p_detHesImg->dxy = deriVal[2];
 
-	p_detHesImg->val[layerSeq] = deriVal[0] * deriVal[1] - 0.912 * 0.912 * deriVal[2] * deriVal[2];
+	p_detHesImg->val = deriVal[0] * deriVal[1] - 0.912 * 0.912 * deriVal[2] * deriVal[2];
 }
 
 // create the det(Hessin) image of the input integral image at one specific octave and layer
@@ -204,7 +203,7 @@ void createDetHesImg(unsigned int *p_integImg, hesMat* p_detHesImg, const unsign
 			if (p_markImg[y * w + x] != SHOULDMARK)
 				continue;
 
-			calcDetHes(&t_filterPtrs, p_filter, t_p_detHesImg, layOrder);
+			calcDetHes(&t_filterPtrs, p_filter, t_p_detHesImg);
 		}
 	}
 }
@@ -222,12 +221,15 @@ double createDetHesImgPyr(hesMat *p_detHesImgPyr, unsigned int *p_integImg, cons
 	double maxVal = 0;
 
 	// create pyramid
+	hesMat* t_p_detHesImgPyr = p_detHesImgPyr;
 	for (unsigned short layOrder = 0; layOrder < layNum; ++layOrder)
 	{
 		//time_t start = clock();
-		createDetHesImg(p_integImg, p_detHesImgPyr, p_markImg, layOrder, w, h);
+		createDetHesImg(p_integImg, t_p_detHesImgPyr, p_markImg, layOrder, w, h);
 		//time_t end = clock();
 		//cout << "Time for one layer of detHes image: " << end - start << endl;
+
+		t_p_detHesImgPyr += totalSize;
 	}
 	
 	return maxVal;
@@ -237,7 +239,7 @@ double createDetHesImgPyr(hesMat *p_detHesImgPyr, unsigned int *p_integImg, cons
 // find the interest point
 // returns 0: current pixel is not the regional maximum point
 // returns 1: current pixel is the regional maximum point
-int isRegionMaximum(const hesMat* p_in, unsigned short w, unsigned char layOrder)
+int isRegionMaximum(const hesMat* p_in, const hesMat* p_inUpper, const hesMat* p_inDown, unsigned short w)
 {
 	if (p_in == NULL)
 	{
@@ -248,27 +250,22 @@ int isRegionMaximum(const hesMat* p_in, unsigned short w, unsigned char layOrder
 	double i00, i01, i02;
 	double i10, i11, i12;
 	double i20, i21, i22;
+	double val = p_in->val;
 
 	// current layer of image
-	unsigned char curLayer = layOrder;
-
-	i00 = (p_in-w-1)->val[curLayer];    i01 = (p_in-w)->val[curLayer];    i02 = (p_in-w+1)->val[curLayer];
-	i10 = (p_in  -1)->val[curLayer];    i11 = (p_in  )->val[curLayer];    i12 = (p_in  +1)->val[curLayer];
-	i20 = (p_in+w-1)->val[curLayer];    i21 = (p_in+w)->val[curLayer];    i22 = (p_in+w+1)->val[curLayer];
+	i00=(p_in-w-1)->val;    i01=(p_in    -w)->val;    i02=(p_in-w+1)->val;
+	i10=(p_in  -1)->val;    i11=(p_in      )->val;    i12=(p_in  +1)->val;
+	i20=(p_in+w-1)->val;    i21=(p_in    +w)->val;    i22=(p_in+w+1)->val;
 
 	if (i11 <= i00 || i11 <= i01 || i11 <= i02
 			|| i11 <= i10 || i11 <= i12
 			|| i11 <= i20 || i11 <= i21 || i11 <= i22)
 		return 0;
 
-	double val = p_in->val[layOrder];
-
 	// upper layer of image
-	curLayer = layOrder + g_upOffset[layOrder];
-
-	i00 = (p_in-w-1)->val[curLayer];    i01 = (p_in-w)->val[curLayer];    i02 = (p_in-w+1)->val[curLayer];
-	i10 = (p_in  -1)->val[curLayer];    i11 = (p_in  )->val[curLayer];    i12 = (p_in  +1)->val[curLayer];
-	i20 = (p_in+w-1)->val[curLayer];    i21 = (p_in+w)->val[curLayer];    i22 = (p_in+w+1)->val[curLayer];
+	i00=(p_inUpper-w-1)->val;    i01=(p_inUpper-w)->val;    i02=(p_inUpper-w+1)->val;
+	i10=(p_inUpper  -1)->val;    i11=(p_inUpper  )->val;    i12=(p_inUpper  +1)->val;
+	i20=(p_inUpper+w-1)->val;    i21=(p_inUpper+w)->val;    i22=(p_inUpper+w+1)->val;
 
 	if (val <= i00 || val <= i01 || val <= i02
 			|| val <= i10 || val <= i11 || val <= i12
@@ -276,11 +273,9 @@ int isRegionMaximum(const hesMat* p_in, unsigned short w, unsigned char layOrder
 		return 0;
 
 	// lower layer of image
-	curLayer = layOrder - g_downOffset[layOrder];
-
-	i00 = (p_in-w-1)->val[curLayer];    i01 = (p_in-w)->val[curLayer];    i02 = (p_in-w+1)->val[curLayer];
-	i10 = (p_in  -1)->val[curLayer];    i11 = (p_in  )->val[curLayer];    i12 = (p_in  +1)->val[curLayer];
-	i20 = (p_in+w-1)->val[curLayer];    i21 = (p_in+w)->val[curLayer];    i22 = (p_in+w+1)->val[curLayer];
+	i00=(p_inDown-w-1)->val;    i01=(p_inDown-w)->val;    i02=(p_inDown-w+1)->val;
+	i10=(p_inDown  -1)->val;    i11=(p_inDown  )->val;    i12=(p_inDown  +1)->val;
+	i20=(p_inDown+w-1)->val;    i21=(p_inDown+w)->val;    i22=(p_inDown+w+1)->val;
 
 	if (val <= i00 || val <= i01 || val <= i02
 			|| val <= i10 || val <= i11 || val <= i12
@@ -307,52 +302,42 @@ unsigned int getPointsLocations(InterestPoint* p_points, unsigned char* p_markIm
 	unsigned int pointNum = 0;
 
 	// former implementation of finding interest point locations
-	const hesMat* p_detHesImgCur = p_detHesImgPyr + w + 1;
-
-	double maxVal = FEAT_MIN;
-	double curVal = 0;
-	unsigned char maxLayOrder = 0;
-
-	for (unsigned int c = w + 1; c != filtSize; ++c, ++p_detHesImgCur)
+	for (unsigned short layOrder = 1; layOrder < LAYER_NUM - 1; ++layOrder)
 	{
-		if (p_markImg[c] != SHOULDMARK)
-			continue;
+		const hesMat* p_detHesImgCur = p_detHesImgPyr + layOrder * totalSize + w + 1;
+		const hesMat* p_detHesImgUp = p_detHesImgCur + g_upOffset[layOrder] * totalSize + w + 1;
+		const hesMat* p_detHesImgDown = p_detHesImgCur - g_downOffset[layOrder] * totalSize + w + 1;
 
-		maxVal = FEAT_MIN;
-		for (unsigned short layOrder = 1; layOrder < LAYER_NUM - 1; ++layOrder)
+		for (unsigned int c = w + 1; c != filtSize; ++c, ++p_detHesImgCur, ++p_detHesImgUp, ++p_detHesImgDown)
 		{
-			curVal = p_detHesImgCur->val[layOrder];
-
-			if (curVal > maxVal)
+			if (p_detHesImgCur->val > detHesThresh && p_markImg[c] == SHOULDMARK && isRegionMaximum(p_detHesImgCur, p_detHesImgUp, p_detHesImgDown, w))
 			{
-				maxVal = curVal;
-				maxLayOrder = layOrder;
+				if (abs(p_detHesImgCur->dxx / p_detHesImgCur->dyy) > 10 || abs(p_detHesImgCur->dyy / p_detHesImgCur->dxx) > 10)
+				{
+					p_markImg[c] = MARKED_FALSE;
+					continue;
+				}
+
+				// mark the interest points first
+				p_markImg[c] = MARKED_TRUE;
+
+				// if current pixel is maximum, then its neighbours are not maximum
+				p_markImg[c + 1] = MARKED_FALSE;
+				p_markImg[c + w] = MARKED_FALSE;
+				p_markImg[c + w + 1] = MARKED_FALSE;
+
+				++c;
+				++p_detHesImgCur;
+				++p_detHesImgUp;
+				++p_detHesImgDown;
+
+				// store the interest point
+				p_points->c.y = c / w;
+				p_points->c.x = c - p_points->c.y * w;
+				p_points++;
+
+				pointNum++;
 			}
-		}
-
-		if (maxVal < detHesThresh)
-			continue;
-
-		if (isRegionMaximum(p_detHesImgCur, w, maxLayOrder))
-		{
-			// mark the interest points first
-			p_markImg[c] = MARKED_TRUE;
-
-			// if current pixel is maximum, then its neighbours are not maximum
-			p_markImg[c + 1] = MARKED_FALSE;
-			p_markImg[c + w] = MARKED_FALSE;
-			p_markImg[c + w + 1] = MARKED_FALSE;
-
-			// store the interest point
-			p_points->c.y = c / w;
-			p_points->c.x = c - p_points->c.y * w;
-			p_points->r = g_sigma[maxLayOrder] * 6;
-
-			p_points++;
-			pointNum++;
-
-			++c;
-			++p_detHesImgCur;
 		}
 	}
 

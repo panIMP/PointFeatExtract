@@ -3,7 +3,7 @@
 
 
 #define _MAIN_TEST_
-//#define _PRE_PROCESS_
+#define _PRE_PROCESS_
 //#define _BINARY_
 
 //#define _MODULATE_DATA_

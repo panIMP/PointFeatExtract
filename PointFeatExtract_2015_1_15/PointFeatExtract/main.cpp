@@ -27,19 +27,15 @@ int main()
 	//cv::Mat_<cv::Vec3b> matLColor = cv::imread(string("G:/xiangmu/Pictures/Dolls/Illum1/Exp0/view0.png"), cv::IMREAD_COLOR);
 	//cv::Mat_<cv::Vec3b> matLColor = cv::imread(string("G:/xiangmu/Pictures/grap/img1.ppm"), cv::IMREAD_COLOR);
 	//cv::Mat_<cv::Vec3b> matLColor = cv::imread(string("G:/xiangmu/Pictures/sift/box.pgm"), cv::IMREAD_COLOR);
-	if (matLColor.empty())
-		return -1;
 
 	// right image
 	//cv::Mat_<cv::Vec3b> matRColor = cv::imread(string("G:/xiangmu/Pictures/jiong/pos/3.bmp"), cv::IMREAD_COLOR);
-	cv::Mat_<cv::Vec3b> matRColor = cv::imread(string("G:/xiangmu/Pictures/juanbidao/qingxie/juanbidao4.bmp"), cv::IMREAD_COLOR);
+	cv::Mat_<cv::Vec3b> matRColor = cv::imread(string("G:/xiangmu/Pictures/juanbidao/pos/juanbidao6.bmp"), cv::IMREAD_COLOR);
 	//cv::Mat_<cv::Vec3b> matRColor = cv::imread(string("G:/xiangmu/Pictures/ykq/pos/2.bmp"), cv::IMREAD_COLOR);
 	//cv::Mat_<cv::Vec3b> matRColor = cv::imread(string("G:/xiangmu/Pictures/gongjian/7.bmp"), cv::IMREAD_COLOR);
 	//cv::Mat_<cv::Vec3b> matRColor = cv::imread(string("G:/xiangmu/Pictures/Dolls/Illum3/Exp2/view0.png"), cv::IMREAD_COLOR);
 	//cv::Mat_<cv::Vec3b> matRColor = cv::imread(string("G:/xiangmu/Pictures/grap/img3.ppm"), cv::IMREAD_COLOR);
 	//cv::Mat_<cv::Vec3b> matRColor = cv::imread(string("G:/xiangmu/Pictures/sift/scene.pgm"), cv::IMREAD_COLOR);
-	if (matRColor.empty())
-		return -1;
 
 	ProjectMat realMat;
 	realMat.m1 = 1;
@@ -104,7 +100,7 @@ int main()
 	unsigned int* p_integImgL = createIntegImg(p_imgL, wL, hL);
 
 	// create the det(Hessin) images of different octaves and layers of the left image
-	hesMat* p_detHesImgPyrL = (hesMat*)calloc_check(wL * hL, sizeof(hesMat));
+	hesMat* p_detHesImgPyrL = (hesMat*)calloc_check(LAYER_NUM * wL * hL, sizeof(hesMat));
 	createDetHesImgPyr(p_detHesImgPyrL, p_integImgL, t_matL.data, LAYER_NUM, wL, hL);
 
 	// locate the interest points in the pyramid of the left image
@@ -116,7 +112,7 @@ int main()
 	unsigned int* p_integImgR = createIntegImg(p_imgR, wR, hR);
 
 	// create the det(Hessin) images of different octaves and layers of the right image
-	hesMat* p_detHesImgPyrR = (hesMat*)calloc_check(wR * hR, sizeof(hesMat));
+	hesMat* p_detHesImgPyrR = (hesMat*)calloc_check(LAYER_NUM * wR * hR, sizeof(hesMat));
 	createDetHesImgPyr(p_detHesImgPyrR, p_integImgR, t_matR.data, LAYER_NUM, wR, hR);
 
 	// locate the interest points in the pyramid of the right image
@@ -126,8 +122,8 @@ int main()
 	// ==============================================================================================================================
 	double dR = (double)(areaR) / (double)pointNumR;
 	unsigned short r = sqrt(dR) / 2;
-	r = 12;
-	double dThresh = r * r / 4;
+	r = 16;
+	double dThresh = dR / 4;
 	
 	wipeOutBoudaryPixel(p_pointsL, &pointNumL, r, wL, hL);
 	cout << "left image interest point number: " << pointNumL << endl;

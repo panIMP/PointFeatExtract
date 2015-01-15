@@ -78,10 +78,10 @@ typedef double featElemType;
 
 typedef struct HES_MAT
 {
-	//double dxx[LAYER_NUM];
-	//double dyy[LAYER_NUM];
-	//double dxy[LAYER_NUM];
-	double val[LAYER_NUM];
+	double dxx;
+	double dyy;
+	double dxy;
+	double val;
 }hesMat;
 
 typedef struct INVARIANT_MOMENT
@@ -100,7 +100,6 @@ typedef struct INTEREST_POINT
 {
 	Point c;
 	InvarMoment mat;
-	unsigned short r;
 }InterestPoint;
 
 typedef struct POINT_PAIR
@@ -137,7 +136,7 @@ void initFiltPtrs(unsigned int *p_integImg, FilterPtrs* p_filterPtrs, const Filt
 void incFilterPtrs(FilterPtrs* p_filterPtrs, unsigned short val);
 
 // calculate the det(Hessin) response of one pixel
-void calcDetHes(const FilterPtrs *p_filterPtrs, const Filter* p_filter, hesMat* p_detHesImg, unsigned char layerSeq);
+void calcDetHes(const FilterPtrs *p_filterPtrs, Filter* p_filter, hesMat* p_detHesImg);
 
 // create the det(Hessin) image of the input integral image at one specific octave and layer
 void createDetHesImg(unsigned int *p_integImg, hesMat* p_detHesImg, const unsigned char* p_markImg, unsigned short layOrder, unsigned short w, unsigned short h);
@@ -148,7 +147,7 @@ double createDetHesImgPyr(hesMat *p_detHesImgPyr, unsigned int *p_integImg, cons
 // find the interest point
 // returns 0: current pixel is not the regional maximum point
 // returns 1: current pixel is the regional maximum point
-int isRegionMaximum(const double* p_in, unsigned short w);
+int isRegionMaximum(const double* p_in, const double* p_inUpper, const double* p_inLower, unsigned short w);
 
 // get the interest points location
 // returns the number of the founded interst points
