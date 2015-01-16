@@ -53,7 +53,7 @@ const Filter g_filts[LAYER_NUM] =
 		4, 3, 3, 9, 9, 49, 1, 11, 3, 17, 9, 49, -1, 3, 11, 9, 17, 49, -1, 11, 11, 17, 17, 49, 1,
 	},
 
-/*	// 3rd layer -- box size: 27 * 27
+	// 3rd layer -- box size: 27 * 27
 	{
 		3, 0, 5, 8, 21, 153, 1, 9, 5, 17, 21, 153, -2, 18, 5, 26, 21, 153, 1, 0, 0, 0, 0, 0, 0,
 		3, 5, 0, 21, 8, 153, 1, 5, 9, 21, 17, 153, -2, 5, 18, 21, 26, 153, 1, 0, 0, 0, 0, 0, 0,
@@ -67,14 +67,14 @@ const Filter g_filts[LAYER_NUM] =
 		4, 6, 6, 18, 18, 169, 1, 20, 6, 32, 18, 169, -1, 6, 20, 18, 32, 169, -1, 20, 20, 32, 32, 169, 1,
 	},
 
-	// 5th layer -- box size: 51 * 51
+/*	// 5th layer -- box size: 51 * 51
 	{
 		3, 0, 9, 16, 41, 561, 1, 17, 9, 33, 41, 561, -2, 34, 9, 50, 41, 561, 1, 0, 0, 0, 0, 0, 0,
 		3, 9, 0, 41, 16, 561, 1, 9, 17, 41, 33, 561, -2, 9, 34, 41, 50, 561, 1, 0, 0, 0, 0, 0, 0,
 		4, 8, 8, 24, 24, 289, 1, 26, 8, 42, 24, 289, -1, 8, 26, 24, 42, 289, -1, 26, 26, 42, 42, 289, 1,
 	},
 
-/*	// 6th layer -- box size: 75 * 75
+	// 6th layer -- box size: 75 * 75
 	{
 		3, 0, 13, 24, 61, 1225, 1, 25, 13, 49, 61, 1225, -2, 50, 13, 74, 61, 1225, 1, 0, 0, 0, 0, 0, 0,
 		3, 13, 0, 61, 24, 1225, 1, 13, 25, 61, 49, 1225, -2, 13, 50, 61, 74, 1225, 1, 0, 0, 0, 0, 0, 0,
@@ -318,6 +318,7 @@ unsigned int getPointsLocations(InterestPoint* p_points, unsigned char* p_markIm
 		if (p_markImg[c] != SHOULDMARK)
 			continue;
 
+		// check if the extreme point exists or not
 		maxVal = FEAT_MIN;
 		for (unsigned short layOrder = 1; layOrder < LAYER_NUM - 1; ++layOrder)
 		{
@@ -335,6 +336,13 @@ unsigned int getPointsLocations(InterestPoint* p_points, unsigned char* p_markIm
 
 		if (isRegionMaximum(p_detHesImgCur, w, maxLayOrder))
 		{
+			short y = c / w;
+			short x = c - y * w;
+			short r = g_sigma[maxLayOrder] * 6;
+
+			if (x - r < 0 || x + r >= w || y - r < 0 || y + r >= h)
+				continue;
+
 			// mark the interest points first
 			p_markImg[c] = MARKED_TRUE;
 
@@ -344,9 +352,9 @@ unsigned int getPointsLocations(InterestPoint* p_points, unsigned char* p_markIm
 			p_markImg[c + w + 1] = MARKED_FALSE;
 
 			// store the interest point
-			p_points->c.y = c / w;
-			p_points->c.x = c - p_points->c.y * w;
-			p_points->r = g_sigma[maxLayOrder] * 6;
+			p_points->c.y = y;
+			p_points->c.x = x;
+			p_points->r = r;
 
 			p_points++;
 			pointNum++;
@@ -359,32 +367,6 @@ unsigned int getPointsLocations(InterestPoint* p_points, unsigned char* p_markIm
 	return pointNum;
 }
 
-
-// wipe out the boudary pixles
-void wipeOutBoudaryPixel(InterestPoint* p_points, unsigned int* p_pointNum, unsigned short r, unsigned short w, unsigned short h)
-{
-	// wipe out the boudary points
-	unsigned int pointNum = *p_pointNum;
-	InterestPoint* p_pointsCur = p_points;
-	InterestPoint* p_pointsEnd = p_points + pointNum;
-	InterestPoint* p_pointsNew = (InterestPoint*)calloc_check(pointNum, sizeof(InterestPoint));
-	InterestPoint* p_pointsNewCur = p_pointsNew;
-	unsigned int pointNumNew = 0;
-	for (p_pointsCur = p_points; p_pointsCur != p_pointsEnd; ++p_pointsCur)
-	{
-		if (p_pointsCur->c.x - r < 0 || p_pointsCur->c.x + r >= w || p_pointsCur->c.y - r < 0 || p_pointsCur->c.y + r >= h)
-			continue;
-
-		p_pointsNewCur->c = p_pointsCur->c;
-		p_pointsNewCur++;
-		pointNumNew++;
-	}
-
-
-	memcpy(p_points, p_pointsNew, pointNumNew * sizeof(InterestPoint));
-	*p_pointNum = pointNumNew;
-	free(p_pointsNew);
-}
 
 // calculate the feature of one interest point
 void calcFeat(InterestPoint* p_point, const unsigned char* p_img, Coord* p_coords, unsigned int neighPointNum, unsigned short w)
@@ -1004,7 +986,7 @@ void showMatchResult(const cv::Mat& matL, const cv::Mat& matR, const ProjectMat&
 }
 
 // draw the rectangle around the interest point
-void drawRect(cv::Mat& mat, const InterestPoint *p_points, unsigned short pointNum, unsigned short step, unsigned short r, cv::Scalar color)
+void drawRect(cv::Mat& mat, const InterestPoint *p_points, unsigned short pointNum, unsigned short step, cv::Scalar color)
 {
 	if (p_points == NULL)
 	{
@@ -1017,7 +999,7 @@ void drawRect(cv::Mat& mat, const InterestPoint *p_points, unsigned short pointN
 	for (; p_pointsCur < p_pointsEnd; p_pointsCur += step)
 	{
 		cv::Point center(p_pointsCur->c.x, p_pointsCur->c.y);
-		cv::circle(mat, center, r, color);
+		cv::circle(mat, center, p_pointsCur->r, color);
 	}
 }
 

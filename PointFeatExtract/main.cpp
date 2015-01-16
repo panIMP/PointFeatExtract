@@ -32,7 +32,7 @@ int main()
 
 	// right image
 	//cv::Mat_<cv::Vec3b> matRColor = cv::imread(string("G:/xiangmu/Pictures/jiong/pos/3.bmp"), cv::IMREAD_COLOR);
-	cv::Mat_<cv::Vec3b> matRColor = cv::imread(string("G:/xiangmu/Pictures/juanbidao/qingxie/juanbidao4.bmp"), cv::IMREAD_COLOR);
+	cv::Mat_<cv::Vec3b> matRColor = cv::imread(string("G:/xiangmu/Pictures/juanbidao/qingxie/juanbidao9.bmp"), cv::IMREAD_COLOR);
 	//cv::Mat_<cv::Vec3b> matRColor = cv::imread(string("G:/xiangmu/Pictures/ykq/pos/2.bmp"), cv::IMREAD_COLOR);
 	//cv::Mat_<cv::Vec3b> matRColor = cv::imread(string("G:/xiangmu/Pictures/gongjian/7.bmp"), cv::IMREAD_COLOR);
 	//cv::Mat_<cv::Vec3b> matRColor = cv::imread(string("G:/xiangmu/Pictures/Dolls/Illum3/Exp2/view0.png"), cv::IMREAD_COLOR);
@@ -109,7 +109,7 @@ int main()
 
 	// locate the interest points in the pyramid of the left image
 	InterestPoint* p_pointsL = (InterestPoint*)calloc_check(wL * hL, sizeof(InterestPoint));
-	unsigned int pointNumL = getPointsLocations(p_pointsL, t_matL.data, p_imgL, p_detHesImgPyrL, LAYER_NUM, 200.0, wL, hL);
+	unsigned int pointNumL = getPointsLocations(p_pointsL, t_matL.data, p_imgL, p_detHesImgPyrL, LAYER_NUM, 400.0, wL, hL);
 
 	// ==============================================================================================================================
 	// create the integrate image of the right image
@@ -121,27 +121,25 @@ int main()
 
 	// locate the interest points in the pyramid of the right image
 	InterestPoint* p_pointsR = (InterestPoint*)calloc_check(wR * hR, sizeof(InterestPoint));
-	unsigned int pointNumR = getPointsLocations(p_pointsR, t_matR.data, p_imgR, p_detHesImgPyrR, LAYER_NUM, 200.0, wR, hR);
+	unsigned int pointNumR = getPointsLocations(p_pointsR, t_matR.data, p_imgR, p_detHesImgPyrR, LAYER_NUM, 400.0, wR, hR);
 
 	// ==============================================================================================================================
 	double dR = (double)(areaR) / (double)pointNumR;
 	unsigned short r = sqrt(dR) / 2;
 	r = 12;
 	double dThresh = r * r / 4;
-	
-	wipeOutBoudaryPixel(p_pointsL, &pointNumL, r, wL, hL);
+
 	cout << "left image interest point number: " << pointNumL << endl;
 	getPointsFeats(p_pointsL, pointNumL, p_imgL, r, wL);
 
-	wipeOutBoudaryPixel(p_pointsR, &pointNumR, r, wR, hR);
 	cout << "right image interest point number: " << pointNumR << endl;
 	getPointsFeats(p_pointsR, pointNumR, p_imgR, r, wR);
 
 	// show compare point location result
 	cv::cvtColor(matL, matLColor, cv::COLOR_GRAY2BGR);
 	cv::cvtColor(matR, matRColor, cv::COLOR_GRAY2BGR);
-	drawRect(matLColor, p_pointsL, pointNumL, 1, 2, cv::Scalar(255, 255, 255));
-	drawRect(matRColor, p_pointsR, pointNumR, 1, 2, cv::Scalar(255, 255, 255));
+	drawRect(matLColor, p_pointsL, pointNumL, 1, cv::Scalar(255, 255, 255));
+	drawRect(matRColor, p_pointsR, pointNumR, 1, cv::Scalar(255, 255, 255));
 
 	// ==============================================================================================================================
 	// match the two images
@@ -249,5 +247,4 @@ int main()
 }
 
 #endif
-
 

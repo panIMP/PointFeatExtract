@@ -11,7 +11,7 @@
 // number of filters(xx, yy, xy)
 #define MODE_NUM  3
 // number of layersS
-#define LAYER_NUM 3
+#define LAYER_NUM 5
 
 #define DETHES_MAX 1E100
 #define DETHES_MIN -1E100
@@ -125,7 +125,7 @@ typedef struct PROJECT_MATRIX
 }ProjectMat;
 
 // draw the rectangle around the interest point
-void drawRect(cv::Mat& mat, const InterestPoint *p_points, unsigned short pointNum, unsigned short step, unsigned short r, cv::Scalar color);
+void drawRect(cv::Mat& mat, const InterestPoint *p_points, unsigned short pointNum, unsigned short step, cv::Scalar color);
 
 // draw the rectangle around the interest point
 void drawRect(unsigned char *p_img, const InterestPoint *p_points, unsigned short pointNum, unsigned short r, unsigned short w, unsigned char pixVal);
@@ -153,9 +153,6 @@ int isRegionMaximum(const double* p_in, unsigned short w);
 // get the interest points location
 // returns the number of the founded interst points
 unsigned int getPointsLocations(InterestPoint* p_points, unsigned char* p_markImg, unsigned char* p_img, const hesMat* p_detHesImgPyr, unsigned short layNum, double detHesThresh, unsigned short w, unsigned short h);
-
-// wipe out the boudary pixles
-void wipeOutBoudaryPixel(InterestPoint* p_points, unsigned int* p_pointNum, unsigned short r, unsigned short w, unsigned short h);
 
 // calculate the feature of one interest point
 void calcFeat(InterestPoint* p_point, const unsigned char* p_img, Coord* p_coords, unsigned int neighPointNum, unsigned short w);

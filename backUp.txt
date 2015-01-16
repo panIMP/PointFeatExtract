@@ -129,3 +129,6 @@ unsigned char otsu(unsigned char* p_img, unsigned short w, unsigned short h)
 
 	return thresh;
 }
+
+Coord* p_coords = (Coord*)calloc_check(4 * r * r, sizeof(Coord));
+	unsigned neighPointNum = calcDiskTmplArray(p_coords, r);
